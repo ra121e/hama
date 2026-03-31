@@ -3,6 +3,14 @@
 		"/^command -v docker >/dev/null && docker --version \\|\\| echo 'docker-not-found'$/": {
 			"approve": true,
 			"matchCommandLine": true
+		},
+		"/^docker compose up --build$/": {
+			"approve": true,
+			"matchCommandLine": true
+		},
+		"/^ss -ltnp \\| grep ':5432' \\|\\| true$/": {
+			"approve": true,
+			"matchCommandLine": true
 		}
 	}
 }

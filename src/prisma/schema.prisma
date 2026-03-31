@@ -1,0 +1,50 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Profile {
+  id        String    @id @default(uuid())
+  name      String
+  currency  String    @default("JPY")
+  userId    String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  scenarios Scenario[]
+  settings  Settings?
+}
+
+model Scenario {
+  id        String     @id @default(uuid())
+  name      String
+  type      String
+  isDefault Boolean    @default(false)
+  createdAt DateTime   @default(now())
+  profile   Profile    @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  profileId String
+  snapshots Snapshot[]
+}
+
+model Snapshot {
+  id         String   @id @default(uuid())
+  timepoint  String
+  categoryId String
+  itemId     String
+  value      Float
+  memo       String?
+  scenario   Scenario @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+  scenarioId String
+}
+
+model Settings {
+  weightHappiness Float   @default(0.7)
+  weightFinance   Float   @default(0.3)
+  targetAssets    Float?
+  displayUnit     String  @default("man")
+  profile         Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  profileId       String  @id
+}
