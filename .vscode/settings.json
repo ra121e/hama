@@ -12,5 +12,25 @@
 			"approve": true,
 			"matchCommandLine": true
 		}
+		"/^cd \/home\/athonda\/hama && npx shadcn@latest init -d$/": {
+			"approve": true,
+			"matchCommandLine": true
+		},
+		"/^cd \/home\/athonda\/hama && npm install next-themes$/": {
+			"approve": true,
+			"matchCommandLine": true
+		},
+		"/^cd \/home\/athonda\/hama && npm run lint$/": {
+			"approve": true,
+			"matchCommandLine": true
+		},
+		"/^cd \/home\/athonda\/hama && npm run build$/": {
+			"approve": true,
+			"matchCommandLine": true
+		},
+		"/^git add \. && git commit -m \"S02: shadcn\/ui導入・グローバルレイアウト・ナビゲーションバー構築\"$/": {
+			"approve": true,
+			"matchCommandLine": true
+		}
 	}
 }

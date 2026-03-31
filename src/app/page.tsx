@@ -11,23 +11,28 @@ const navItems = [
 
 export default function Home() {
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-5xl flex-col gap-8 px-6 py-10 sm:px-8">
-      <header className="space-y-3 border-b border-border pb-6">
-        <h1 className="text-balance text-3xl font-semibold tracking-tight sm:text-4xl">
-          HAMA（ハマ） — Happy Adviser Money Adviser
+    <main className="mx-auto w-full max-w-6xl px-6 py-12 sm:px-8">
+      <section className="rounded-2xl border border-border bg-card/70 p-8 shadow-sm sm:p-12">
+        <p className="text-xs font-semibold tracking-[0.45em] text-primary">H A M A</p>
+        <h1 className="mt-4 text-balance text-4xl font-semibold leading-tight tracking-tight sm:text-5xl">
+          HAMA（ハマ）
+          <span className="mt-2 block text-xl font-medium text-muted-foreground sm:text-2xl">
+            Happy Adviser Money Adviser
+          </span>
         </h1>
-        <p className="text-sm text-muted-foreground sm:text-base">
-          財務とハッピーを統合して見える化するライフプランニングダッシュボード
+        <p className="mt-6 max-w-2xl text-sm text-muted-foreground sm:text-base">
+          ダッシュボードを起点に、入力・シナリオ・シミュレーション・レポートを横断しながら、
+          人生設計を可視化していきます。
         </p>
-      </header>
+      </section>
 
-      <nav aria-label="主要ナビゲーション">
+      <nav aria-label="主要ナビゲーション" className="mt-8">
         <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {navItems.map((item) => (
             <li key={item.href}>
               <Link
                 href={item.href}
-                className="block rounded-lg border border-border bg-card px-4 py-3 text-base font-medium text-card-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+                className="block rounded-lg border border-border bg-card px-4 py-3 text-base font-medium text-card-foreground transition-colors hover:border-primary/40 hover:bg-accent hover:text-accent-foreground"
               >
                 {item.label}
               </Link>
