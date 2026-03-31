@@ -1,0 +1,8 @@
+{
+	"chat.tools.terminal.autoApprove": {
+		"/^command -v docker >/dev/null && docker --version \\|\\| echo 'docker-not-found'$/": {
+			"approve": true,
+			"matchCommandLine": true
+		}
+	}
+}
