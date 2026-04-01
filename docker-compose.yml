@@ -12,6 +12,7 @@ services:
     volumes:
       - .:/app
       - /app/node_modules
+      - /app/.next
 
   db:
     image: postgres:16-alpine
