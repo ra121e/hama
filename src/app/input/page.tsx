@@ -7,17 +7,6 @@ import { FinancialInput } from "@/features/financial/components/FinancialInput";
 import { HappinessSlider } from "@/features/happiness/components/HappinessSlider";
 import { useProfileStore } from "@/store/profileStore";
 
-const SAMPLE_RADAR_SERIES = [
-  {
-    name: "ベースケース",
-    values: [72, 68, 75, 81] as [number, number, number, number],
-  },
-  {
-    name: "サンプル比較",
-    values: [66, 74, 79, 85] as [number, number, number, number],
-  },
-];
-
 export default function InputPage() {
   const loadProfileFromDb = useProfileStore((state) => state.loadProfileFromDb);
   const clearError = useProfileStore((state) => state.clearError);
@@ -26,6 +15,7 @@ export default function InputPage() {
   const isHydrated = useProfileStore((state) => state.isHydrated);
   const errorMessage = useProfileStore((state) => state.errorMessage);
   const lastSavedAt = useProfileStore((state) => state.lastSavedAt);
+  const happiness = useProfileStore((state) => state.profile.happiness);
 
   useEffect(() => {
     void loadProfileFromDb();
@@ -62,21 +52,24 @@ export default function InputPage() {
       </header>
 
       {isHydrated ? (
-        <>
-          <FinancialInput />
-          <HappinessSlider />
-          <Card>
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_420px] lg:items-start">
+          <div className="space-y-6">
+            <FinancialInput />
+            <HappinessSlider />
+          </div>
+
+          <Card className="lg:sticky lg:top-24">
             <CardHeader>
-              <CardTitle>レーダーチャート（サンプル）</CardTitle>
+              <CardTitle>ハッピー4軸レーダーチャート</CardTitle>
               <CardDescription>
-                ハッピー4項目の可視化サンプル。将来的にストア連携でリアルタイム反映します。
+                スライダー変更に合わせてリアルタイムで更新されます。
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <RadarChart series={SAMPLE_RADAR_SERIES} />
+              <RadarChart happiness={happiness} scenarioName="現在入力" />
             </CardContent>
           </Card>
-        </>
+        </div>
       ) : (
         <div className="rounded-md border border-border px-4 py-6 text-sm text-muted-foreground">
           入力データを準備しています...
