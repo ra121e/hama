@@ -8,12 +8,14 @@ import {
 	type ProfileSettings,
 	type Timepoint,
 } from "@/entities/profile";
+import { calcHamaScoreFromProfile } from "@/shared/lib/hama-score";
 import type { Snapshot } from "@/entities/scenario";
 
 type ScenarioSnapshotState = Partial<Record<Timepoint, Snapshot[]>>;
 
 type ProfileStoreState = {
 	profile: Profile;
+	hamaScore: number;
 	activeScenarioId: string;
 	snapshotsByScenario: Record<string, ScenarioSnapshotState>;
 	setActiveScenario: (scenarioId: string) => void;
@@ -23,6 +25,7 @@ type ProfileStoreState = {
 	updateSettings: (patch: Partial<ProfileSettings>) => void;
 	setSnapshots: (scenarioId: string, timepoint: Timepoint, snapshots: Snapshot[]) => void;
 	syncCurrentInputsToSnapshot: (scenarioId: string, timepoint: Timepoint) => void;
+	recalculateHamaScore: () => void;
 	resetProfile: () => void;
 };
 
@@ -81,8 +84,16 @@ const createSnapshotsFromProfile = (
 	return [...financialSnapshots, ...happinessSnapshots];
 };
 
+const withUpdatedTimestamp = (profile: Profile): Profile => ({
+	...profile,
+	updatedAt: new Date().toISOString(),
+});
+
+const initialProfile = createInitialProfile();
+
 export const useProfileStore = create<ProfileStoreState>((set, get) => ({
-	profile: createInitialProfile(),
+	profile: initialProfile,
+	hamaScore: calcHamaScoreFromProfile(initialProfile),
 	activeScenarioId: "base",
 	snapshotsByScenario: {},
 
@@ -92,30 +103,33 @@ export const useProfileStore = create<ProfileStoreState>((set, get) => ({
 
 	setProfileMeta: (patch) => {
 		set((state) => ({
-			profile: {
+			profile: withUpdatedTimestamp({
 				...state.profile,
 				...patch,
-				updatedAt: new Date().toISOString(),
-			},
+			}),
 		}));
 	},
 
 	updateFinancial: (itemId, value) => {
-		set((state) => ({
-			profile: {
+		set((state) => {
+			const nextProfile = withUpdatedTimestamp({
 				...state.profile,
 				financial: {
 					...state.profile.financial,
 					[itemId]: value,
 				},
-				updatedAt: new Date().toISOString(),
-			},
-		}));
+			});
+
+			return {
+				profile: nextProfile,
+				hamaScore: calcHamaScoreFromProfile(nextProfile),
+			};
+		});
 	},
 
 	updateHappiness: (itemId, value, memo) => {
-		set((state) => ({
-			profile: {
+		set((state) => {
+			const nextProfile = withUpdatedTimestamp({
 				...state.profile,
 				happiness: {
 					...state.profile.happiness,
@@ -128,22 +142,30 @@ export const useProfileStore = create<ProfileStoreState>((set, get) => ({
 								...state.profile.happinessMemo,
 								[itemId]: memo,
 							},
-				updatedAt: new Date().toISOString(),
-			},
-		}));
+				});
+
+				return {
+					profile: nextProfile,
+					hamaScore: calcHamaScoreFromProfile(nextProfile),
+				};
+			});
 	},
 
 	updateSettings: (patch) => {
-		set((state) => ({
-			profile: {
+		set((state) => {
+			const nextProfile = withUpdatedTimestamp({
 				...state.profile,
 				settings: {
 					...state.profile.settings,
 					...patch,
 				},
-				updatedAt: new Date().toISOString(),
-			},
-		}));
+			});
+
+			return {
+				profile: nextProfile,
+				hamaScore: calcHamaScoreFromProfile(nextProfile),
+			};
+		});
 	},
 
 	setSnapshots: (scenarioId, timepoint, snapshots) => {
@@ -164,9 +186,17 @@ export const useProfileStore = create<ProfileStoreState>((set, get) => ({
 		get().setSnapshots(scenarioId, timepoint, snapshots);
 	},
 
+	recalculateHamaScore: () => {
+		const profile = get().profile;
+		set({ hamaScore: calcHamaScoreFromProfile(profile) });
+	},
+
 	resetProfile: () => {
+		const nextProfile = createInitialProfile();
+
 		set({
-			profile: createInitialProfile(),
+			profile: nextProfile,
+			hamaScore: calcHamaScoreFromProfile(nextProfile),
 			activeScenarioId: "base",
 			snapshotsByScenario: {},
 		});
