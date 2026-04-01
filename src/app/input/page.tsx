@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { DualAxisChart } from "@/features/charts/DualAxisChart";
 import { HamaScore } from "@/features/charts/HamaScore";
 import { RadarChart } from "@/features/charts/RadarChart";
 import { FinancialInput } from "@/features/financial/components/FinancialInput";
@@ -62,17 +63,31 @@ export default function InputPage() {
               <HappinessSlider />
             </div>
 
-            <Card className="lg:sticky lg:top-24">
-              <CardHeader>
-                <CardTitle>ハッピー4軸レーダーチャート</CardTitle>
-                <CardDescription>
-                  スライダー変更に合わせてリアルタイムで更新されます。
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <RadarChart happiness={happiness} scenarioName="現在入力" />
-              </CardContent>
-            </Card>
+            <div className="space-y-6 lg:sticky lg:top-24">
+              <Card>
+                <CardHeader>
+                  <CardTitle>ハッピー4軸レーダーチャート</CardTitle>
+                  <CardDescription>
+                    スライダー変更に合わせてリアルタイムで更新されます。
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <RadarChart happiness={happiness} scenarioName="現在入力" />
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>将来シミュレーション（デュアル軸）</CardTitle>
+                  <CardDescription>
+                    左軸は金額（万円）、右軸はHAMAスコア・幸福度を表示します。
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <DualAxisChart showHappinessSeries />
+                </CardContent>
+              </Card>
+            </div>
           </div>
         </>
       ) : (
