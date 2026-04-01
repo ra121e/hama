@@ -1,9 +1,8 @@
-version: '3.9'
 services:
   app:
     build: .
     ports:
-      - "3000:3000"
+      - "${HAMA_APP_PORT:-3000}:3000"
     environment:
       - DATABASE_URL=postgresql://hama:hama@db:5432/hama
       - NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
@@ -21,7 +20,7 @@ services:
       POSTGRES_PASSWORD: hama
       POSTGRES_DB: hama
     ports:
-      - "5432:5432"
+      - "${HAMA_DB_PORT:-55432}:5432"
     volumes:
       - hama_pgdata:/var/lib/postgresql/data
 
