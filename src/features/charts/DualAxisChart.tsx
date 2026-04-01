@@ -151,6 +151,28 @@ export function DualAxisChart({ className, showHappinessSeries = true }: DualAxi
     };
   }, [timeline]);
 
+  const scoreAxisRange = useMemo(() => {
+    const scoreMax = 100;
+    const leftMin = financialAxisRange.min;
+    const leftMax = financialAxisRange.max;
+    const leftSpan = leftMax - leftMin;
+
+    if (leftSpan <= 0 || leftMax <= 0) {
+      return { min: 0, max: scoreMax };
+    }
+
+    const zeroRatio = Math.min(0.95, Math.max(0, -leftMin / leftSpan));
+    if (zeroRatio === 0) {
+      return { min: 0, max: scoreMax };
+    }
+
+    const scoreMin = -((zeroRatio * scoreMax) / (1 - zeroRatio));
+    return {
+      min: Number(scoreMin.toFixed(2)),
+      max: scoreMax,
+    };
+  }, [financialAxisRange.max, financialAxisRange.min]);
+
   const option = useMemo<EChartsOption>(() => {
     return {
       color: ["#f3e7c3", "#a7c7ff", "#f4b0b0", "#9edbb0", "#f1a8a8", "#86d4c3", "#f5c98a", "#b5df7b", "#8cc7d9"],
@@ -202,8 +224,8 @@ export function DualAxisChart({ className, showHappinessSeries = true }: DualAxi
           position: "right",
           nameLocation: "middle",
           nameGap: 46,
-          min: 0,
-          max: 100,
+          min: scoreAxisRange.min,
+          max: scoreAxisRange.max,
         },
       ],
       series: [
@@ -255,7 +277,7 @@ export function DualAxisChart({ className, showHappinessSeries = true }: DualAxi
           data: timeline.balanceNegative,
           symbol: "none",
           lineStyle: { width: 0, opacity: chartOpacity.financial },
-          areaStyle: { color: "#f1a8a8", opacity: 0.3 * chartOpacity.financial },
+          areaStyle: { color: "#ffffff", opacity: 1 },
         },
         {
           name: "HAMAスコア",
@@ -304,7 +326,7 @@ export function DualAxisChart({ className, showHappinessSeries = true }: DualAxi
         },
       ],
     };
-  }, [chartOpacity, financialAxisRange.max, financialAxisRange.min, showHappinessSeries, timeline]);
+  }, [chartOpacity, financialAxisRange.max, financialAxisRange.min, scoreAxisRange.max, scoreAxisRange.min, showHappinessSeries, timeline]);
 
   useEffect(() => {
     if (!chartContainerRef.current) {
