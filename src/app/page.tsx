@@ -66,46 +66,46 @@ export default function Home() {
 
       {isHydrated ? (
         <>
-          <section className="mx-auto w-full max-w-4xl">
-            <HamaScore />
-          </section>
+          <section className="grid gap-6 lg:grid-cols-2 lg:items-start">
+            <div className="space-y-6">
+              <HamaScore />
 
-          <section className="grid gap-6 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] xl:items-start">
-            <Card className="border-primary/20 bg-card/85 shadow-sm">
-              <CardHeader>
-                <CardTitle>ハッピー入力</CardTitle>
-                <CardDescription>
-                  スライダーを調整すると、HAMAスコアと各チャートがリアルタイムで更新されます。
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <HappinessSlider />
-              </CardContent>
-            </Card>
+              <Card className="border-primary/20 bg-card/85 shadow-sm">
+                <CardHeader>
+                  <CardTitle>ハッピー入力</CardTitle>
+                  <CardDescription>
+                    スライダーを調整すると、HAMAスコアと各チャートがリアルタイムで更新されます。
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <HappinessSlider />
+                </CardContent>
+              </Card>
+            </div>
 
-            <Card className="border-primary/20 bg-card/85 shadow-sm">
-              <CardHeader>
-                <CardTitle>ハッピー4軸レーダーチャート</CardTitle>
-                <CardDescription>現在入力とシナリオ差分を俯瞰できます。</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <RadarChart happiness={happiness} scenarioName="ダッシュボード" />
-              </CardContent>
-            </Card>
-          </section>
+            <div className="space-y-6">
+              <Card className="border-primary/20 bg-card/85 shadow-sm">
+                <CardHeader>
+                  <CardTitle>将来推移（デュアル軸ライン）</CardTitle>
+                  <CardDescription>
+                    左軸は財務、右軸はハッピー4項目とHAMAスコア。将来4時点を同時に確認できます。
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <DualAxisChart className="h-[420px]" showHappinessSeries />
+                </CardContent>
+              </Card>
 
-          <section>
-            <Card className="border-primary/20 bg-card/85 shadow-sm">
-              <CardHeader>
-                <CardTitle>将来推移（デュアル軸ライン）</CardTitle>
-                <CardDescription>
-                  左軸は財務、右軸はハッピー4項目とHAMAスコア。将来4時点を同時に確認できます。
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <DualAxisChart className="h-[420px]" showHappinessSeries />
-              </CardContent>
-            </Card>
+              <Card className="border-primary/20 bg-card/85 shadow-sm">
+                <CardHeader>
+                  <CardTitle>ハッピー4軸レーダーチャート</CardTitle>
+                  <CardDescription>現在入力とシナリオ差分を俯瞰できます。</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <RadarChart happiness={happiness} scenarioName="ダッシュボード" />
+                </CardContent>
+              </Card>
+            </div>
           </section>
         </>
       ) : (
