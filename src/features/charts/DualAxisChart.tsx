@@ -74,7 +74,6 @@ export function DualAxisChart({ className, showHappinessSeries = true }: DualAxi
   const chartInstanceRef = useRef<echarts.ECharts | null>(null);
 
   const profile = useProfileStore((state) => state.profile);
-  const hamaScoreNow = useProfileStore((state) => state.hamaScore);
   const activeScenarioId = useProfileStore((state) => state.activeScenarioId);
   const snapshotsByScenario = useProfileStore((state) => state.snapshotsByScenario);
   const chartOpacity = useUIStore((state) => state.chartOpacity);
@@ -98,12 +97,8 @@ export function DualAxisChart({ className, showHappinessSeries = true }: DualAxi
       carry = next;
     }
 
-    const scoreSeries = points.map((point, index) => {
-      if (index === 0) {
-        return hamaScoreNow;
-      }
-
-      return calcHamaScore(
+    const scoreSeries = points.map((point) =>
+      calcHamaScore(
         {
           financial: {
             assets: point.assets,
@@ -122,8 +117,8 @@ export function DualAxisChart({ className, showHappinessSeries = true }: DualAxi
           weightFinance: profile.settings.weightFinance,
           targetAssets: profile.settings.targetAssets,
         },
-      );
-    });
+      ),
+    );
 
     return {
       labels: TIMEPOINTS.map((item) => item.label),
@@ -145,7 +140,7 @@ export function DualAxisChart({ className, showHappinessSeries = true }: DualAxi
       hap_selfreal: points.map((point) => point.hap_selfreal),
       hama: scoreSeries,
     };
-  }, [activeScenarioId, hamaScoreNow, profile, snapshotsByScenario]);
+  }, [activeScenarioId, profile, snapshotsByScenario]);
 
   const financialAxisRange = useMemo(() => {
     const values = [...timeline.assets, ...timeline.income, ...timeline.expense, ...timeline.balance];
