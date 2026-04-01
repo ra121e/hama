@@ -1,9 +1,22 @@
 "use client";
 
 import { useEffect } from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { RadarChart } from "@/features/charts/RadarChart";
 import { FinancialInput } from "@/features/financial/components/FinancialInput";
 import { HappinessSlider } from "@/features/happiness/components/HappinessSlider";
 import { useProfileStore } from "@/store/profileStore";
+
+const SAMPLE_RADAR_SERIES = [
+  {
+    name: "ベースケース",
+    values: [72, 68, 75, 81] as [number, number, number, number],
+  },
+  {
+    name: "サンプル比較",
+    values: [66, 74, 79, 85] as [number, number, number, number],
+  },
+];
 
 export default function InputPage() {
   const loadProfileFromDb = useProfileStore((state) => state.loadProfileFromDb);
@@ -52,6 +65,17 @@ export default function InputPage() {
         <>
           <FinancialInput />
           <HappinessSlider />
+          <Card>
+            <CardHeader>
+              <CardTitle>レーダーチャート（サンプル）</CardTitle>
+              <CardDescription>
+                ハッピー4項目の可視化サンプル。将来的にストア連携でリアルタイム反映します。
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <RadarChart series={SAMPLE_RADAR_SERIES} />
+            </CardContent>
+          </Card>
         </>
       ) : (
         <div className="rounded-md border border-border px-4 py-6 text-sm text-muted-foreground">
