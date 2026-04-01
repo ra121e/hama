@@ -118,6 +118,15 @@ export function DualAxisChart({ className, showHappinessSeries = true }: DualAxi
       assets: points.map((point) => toManYen(point.assets)),
       income: points.map((point) => toManYen(point.income)),
       expense: points.map((point) => toManYen(point.expense)),
+      balance: points.map((point) => toManYen(point.income - point.expense)),
+      balancePositive: points.map((point) => {
+        const value = toManYen(point.income - point.expense);
+        return value >= 0 ? value : null;
+      }),
+      balanceNegative: points.map((point) => {
+        const value = toManYen(point.income - point.expense);
+        return value < 0 ? value : null;
+      }),
       hap_time: points.map((point) => point.hap_time),
       hap_health: points.map((point) => point.hap_health),
       hap_relation: points.map((point) => point.hap_relation),
@@ -126,9 +135,25 @@ export function DualAxisChart({ className, showHappinessSeries = true }: DualAxi
     };
   }, [activeScenarioId, hamaScoreNow, profile, snapshotsByScenario]);
 
+  const financialAxisRange = useMemo(() => {
+    const values = [...timeline.assets, ...timeline.income, ...timeline.expense, ...timeline.balance];
+    const rawMin = Math.min(...values);
+    const rawMax = Math.max(...values);
+    const span = Math.max(1, rawMax - rawMin);
+
+    const negativeRoom = Math.max(Math.abs(rawMax) * 0.2, span * 0.2, 1);
+    const min = Math.min(rawMin - span * 0.05, -negativeRoom);
+    const max = rawMax + span * 0.1;
+
+    return {
+      min: Number(min.toFixed(2)),
+      max: Number(max.toFixed(2)),
+    };
+  }, [timeline]);
+
   const option = useMemo<EChartsOption>(() => {
     return {
-      color: ["#2563eb", "#0284c7", "#60a5fa", "#16a34a", "#f59e0b", "#84cc16", "#f97316", "#14b8a6"],
+      color: ["#f3e7c3", "#a7c7ff", "#f4b0b0", "#9edbb0", "#f1a8a8", "#86d4c3", "#f5c98a", "#b5df7b", "#8cc7d9"],
       tooltip: {
         trigger: "axis",
         axisPointer: {
@@ -136,7 +161,7 @@ export function DualAxisChart({ className, showHappinessSeries = true }: DualAxi
         },
       },
       legend: {
-        top: 8,
+        top: 6,
         selectedMode: "multiple",
         textStyle: {
           color: "#52525b",
@@ -145,7 +170,7 @@ export function DualAxisChart({ className, showHappinessSeries = true }: DualAxi
       grid: {
         left: 56,
         right: 56,
-        top: 56,
+        top: 84,
         bottom: 40,
       },
       xAxis: {
@@ -163,14 +188,20 @@ export function DualAxisChart({ className, showHappinessSeries = true }: DualAxi
           type: "value",
           name: "金額（万円）",
           position: "left",
+          nameLocation: "middle",
+          nameGap: 46,
+          min: financialAxisRange.min,
+          max: financialAxisRange.max,
           axisLabel: {
             formatter: (value: number) => `${value}`,
           },
         },
         {
           type: "value",
-          name: "HAMAスコア",
+          name: "スコア（0-100）",
           position: "right",
+          nameLocation: "middle",
+          nameGap: 46,
           min: 0,
           max: 100,
         },
@@ -182,8 +213,9 @@ export function DualAxisChart({ className, showHappinessSeries = true }: DualAxi
           yAxisIndex: 0,
           smooth: true,
           data: timeline.assets,
-          lineStyle: { width: 2, opacity: chartOpacity.financial },
-          areaStyle: { opacity: 0.06 * chartOpacity.financial },
+          symbol: "none",
+          lineStyle: { width: 0, opacity: chartOpacity.financial },
+          areaStyle: { color: "#f3e7c3", opacity: 0.28 * chartOpacity.financial },
         },
         {
           name: "収入",
@@ -191,8 +223,9 @@ export function DualAxisChart({ className, showHappinessSeries = true }: DualAxi
           yAxisIndex: 0,
           smooth: true,
           data: timeline.income,
-          lineStyle: { width: 2, opacity: chartOpacity.financial },
-          areaStyle: { opacity: 0.06 * chartOpacity.financial },
+          symbol: "none",
+          lineStyle: { width: 0, opacity: chartOpacity.financial },
+          areaStyle: { color: "#a7c7ff", opacity: 0.28 * chartOpacity.financial },
         },
         {
           name: "支出",
@@ -200,8 +233,29 @@ export function DualAxisChart({ className, showHappinessSeries = true }: DualAxi
           yAxisIndex: 0,
           smooth: true,
           data: timeline.expense,
-          lineStyle: { width: 2, opacity: chartOpacity.financial },
-          areaStyle: { opacity: 0.04 * chartOpacity.financial },
+          symbol: "none",
+          lineStyle: { width: 0, opacity: chartOpacity.financial },
+          areaStyle: { color: "#f4b0b0", opacity: 0.28 * chartOpacity.financial },
+        },
+        {
+          name: "収支差額（収入-支出）",
+          type: "line",
+          yAxisIndex: 0,
+          smooth: true,
+          data: timeline.balancePositive,
+          symbol: "none",
+          lineStyle: { width: 0, opacity: chartOpacity.financial },
+          areaStyle: { color: "#9edbb0", opacity: 0.3 * chartOpacity.financial },
+        },
+        {
+          name: "収支差額（収入-支出）",
+          type: "line",
+          yAxisIndex: 0,
+          smooth: true,
+          data: timeline.balanceNegative,
+          symbol: "none",
+          lineStyle: { width: 0, opacity: chartOpacity.financial },
+          areaStyle: { color: "#f1a8a8", opacity: 0.3 * chartOpacity.financial },
         },
         {
           name: "HAMAスコア",
@@ -250,7 +304,7 @@ export function DualAxisChart({ className, showHappinessSeries = true }: DualAxi
         },
       ],
     };
-  }, [chartOpacity, showHappinessSeries, timeline]);
+  }, [chartOpacity, financialAxisRange.max, financialAxisRange.min, showHappinessSeries, timeline]);
 
   useEffect(() => {
     if (!chartContainerRef.current) {
@@ -282,7 +336,7 @@ export function DualAxisChart({ className, showHappinessSeries = true }: DualAxi
     <div
       ref={chartContainerRef}
       className={cn("h-[380px] w-full rounded-xl", className)}
-      aria-label="財務左軸とHAMAスコア右軸のデュアル軸ラインチャート"
+      aria-label="財務左軸とスコア右軸のデュアル軸チャート"
     />
   );
 }
