@@ -35,38 +35,6 @@ export default function Home() {
 
   return (
     <main className="mx-auto w-full max-w-7xl space-y-8 px-6 py-10 sm:px-8 lg:py-12">
-      <header className="space-y-3 rounded-2xl border border-border bg-card/70 p-6 shadow-sm sm:p-8">
-        <p className="text-xs font-semibold tracking-[0.38em] text-primary">H A M A</p>
-        <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">HAMA ダッシュボード</h1>
-        <p className="text-sm text-muted-foreground sm:text-base">
-          ハッピー入力と可視化チャートを1画面に集約し、現在と将来のバランスを継続的に確認できます。
-        </p>
-
-        <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-          {isLoading ? <span>DBから読込中...</span> : null}
-          {isSaving ? <span>保存中...</span> : null}
-          {lastSavedAt ? (
-            <span>
-              最終保存: {new Date(lastSavedAt).toLocaleTimeString("ja-JP")}
-            </span>
-          ) : null}
-        </div>
-
-        {errorMessage ? (
-          <div className="flex items-center gap-3 rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-xs text-destructive">
-            <span>{errorMessage}</span>
-            <button
-              type="button"
-              onClick={clearError}
-              className="rounded-sm border border-destructive/40 px-2 py-0.5"
-            >
-              閉じる
-            </button>
-          </div>
-        ) : null}
-
-      </header>
-
       {isHydrated ? (
         <>
           <section className="grid gap-6 lg:grid-cols-[minmax(0,0.43fr)_minmax(0,0.57fr)] lg:items-start">
@@ -77,6 +45,27 @@ export default function Home() {
                   <CardDescription>
                     左側で時間軸ごとに入力し、右側で結果をリアルタイムに確認できます。
                   </CardDescription>
+                  <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                    {isLoading ? <span>DBから読込中...</span> : null}
+                    {isSaving ? <span>保存中...</span> : null}
+                    {lastSavedAt ? (
+                      <span>
+                        最終保存: {new Date(lastSavedAt).toLocaleTimeString("ja-JP")}
+                      </span>
+                    ) : null}
+                  </div>
+                  {errorMessage ? (
+                    <div className="flex items-center gap-3 rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-xs text-destructive">
+                      <span>{errorMessage}</span>
+                      <button
+                        type="button"
+                        onClick={clearError}
+                        className="rounded-sm border border-destructive/40 px-2 py-0.5"
+                      >
+                        閉じる
+                      </button>
+                    </div>
+                  ) : null}
                 </CardHeader>
                 <CardContent className="space-y-5">
                   <TimepointSelector />
