@@ -51,9 +51,10 @@ export function HamaScore() {
     () => Math.max(0, Math.min(100, Number.isFinite(computedScore) ? computedScore : storedScore)),
     [computedScore, storedScore],
   );
+  const displayScore = useMemo(() => Math.round(score), [score]);
 
-  const tone = scoreTone(score);
-  const gradient = `conic-gradient(${tone.ringColor} ${score * 3.6}deg, rgba(161,161,170,0.18) 0deg)`;
+  const tone = scoreTone(displayScore);
+  const gradient = `conic-gradient(${tone.ringColor} ${displayScore * 3.6}deg, rgba(161,161,170,0.18) 0deg)`;
 
   return (
     <Card>
@@ -72,7 +73,7 @@ export function HamaScore() {
             aria-label="HAMAスコアゲージ"
           >
             <div className="grid h-full w-full place-items-center rounded-full bg-background shadow-sm">
-              <span className="text-4xl font-bold tracking-tight">{score.toFixed(1)}</span>
+              <span className="text-4xl font-bold tracking-tight">{displayScore}</span>
             </div>
           </div>
 

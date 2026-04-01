@@ -113,7 +113,7 @@ export function FinancialInput() {
           </div>
 
           <p className="text-sm text-muted-foreground">
-            現在のHAMAスコア: <span className="font-semibold text-foreground">{hamaScore.toFixed(1)}</span>
+            現在のHAMAスコア: <span className="font-semibold text-foreground">{Math.round(hamaScore)}</span>
           </p>
         </CardContent>
       </Card>

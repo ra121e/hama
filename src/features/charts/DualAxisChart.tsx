@@ -98,25 +98,27 @@ export function DualAxisChart({ className, showHappinessSeries = true }: DualAxi
     }
 
     const scoreSeries = points.map((point) =>
-      calcHamaScore(
-        {
-          financial: {
-            assets: point.assets,
-            income: point.income,
-            expense: point.expense,
+      Math.round(
+        calcHamaScore(
+          {
+            financial: {
+              assets: point.assets,
+              income: point.income,
+              expense: point.expense,
+            },
+            happiness: {
+              hap_time: point.hap_time,
+              hap_health: point.hap_health,
+              hap_relation: point.hap_relation,
+              hap_selfreal: point.hap_selfreal,
+            },
           },
-          happiness: {
-            hap_time: point.hap_time,
-            hap_health: point.hap_health,
-            hap_relation: point.hap_relation,
-            hap_selfreal: point.hap_selfreal,
+          {
+            weightHappiness: profile.settings.weightHappiness,
+            weightFinance: profile.settings.weightFinance,
+            targetAssets: profile.settings.targetAssets,
           },
-        },
-        {
-          weightHappiness: profile.settings.weightHappiness,
-          weightFinance: profile.settings.weightFinance,
-          targetAssets: profile.settings.targetAssets,
-        },
+        ),
       ),
     );
 
