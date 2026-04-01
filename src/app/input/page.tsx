@@ -1,10 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { DualAxisChart } from "@/features/charts/DualAxisChart";
-import { HamaScore } from "@/features/charts/HamaScore";
-import { RadarChart } from "@/features/charts/RadarChart";
+import Link from "next/link";
 import { FinancialInput } from "@/features/financial/components/FinancialInput";
 import { HappinessSlider } from "@/features/happiness/components/HappinessSlider";
 import { useProfileStore } from "@/store/profileStore";
@@ -17,7 +14,6 @@ export default function InputPage() {
   const isHydrated = useProfileStore((state) => state.isHydrated);
   const errorMessage = useProfileStore((state) => state.errorMessage);
   const lastSavedAt = useProfileStore((state) => state.lastSavedAt);
-  const happiness = useProfileStore((state) => state.profile.happiness);
 
   useEffect(() => {
     void loadProfileFromDb();
@@ -26,10 +22,13 @@ export default function InputPage() {
   return (
     <main className="mx-auto w-full max-w-6xl space-y-8 px-6 py-10 sm:px-8">
       <header className="space-y-2">
-        <h1 className="text-3xl font-semibold tracking-tight">入力</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">入力（簡易）</h1>
         <p className="text-sm text-muted-foreground">
-          ハッピーカテゴリと財務カテゴリを同じページで入力できます。
+          財務カテゴリとハッピーカテゴリを集中入力するページです。可視化はダッシュボードで確認します。
         </p>
+        <Link href="/" className="inline-flex text-sm font-medium text-primary underline-offset-4 hover:underline">
+          HAMA ダッシュボードへ戻る
+        </Link>
         <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
           {isLoading ? <span>DBから読込中...</span> : null}
           {isSaving ? <span>保存中...</span> : null}
@@ -54,42 +53,10 @@ export default function InputPage() {
       </header>
 
       {isHydrated ? (
-        <>
-          <HamaScore />
-
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_420px] lg:items-start">
-            <div className="space-y-6">
-              <FinancialInput />
-              <HappinessSlider />
-            </div>
-
-            <div className="space-y-6 lg:sticky lg:top-24">
-              <Card>
-                <CardHeader>
-                  <CardTitle>ハッピー4軸レーダーチャート</CardTitle>
-                  <CardDescription>
-                    スライダー変更に合わせてリアルタイムで更新されます。
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <RadarChart happiness={happiness} scenarioName="現在入力" />
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>将来シミュレーション（デュアル軸）</CardTitle>
-                  <CardDescription>
-                    左軸は金額（万円）、右軸はHAMAスコア・幸福度を表示します。
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <DualAxisChart showHappinessSeries />
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        </>
+        <div className="space-y-6">
+          <FinancialInput />
+          <HappinessSlider />
+        </div>
       ) : (
         <div className="rounded-md border border-border px-4 py-6 text-sm text-muted-foreground">
           入力データを準備しています...
