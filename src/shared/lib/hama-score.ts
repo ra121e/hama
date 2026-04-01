@@ -1,58 +1,74 @@
-import type {
-	FinancialData,
-	HappinessData,
-	Profile,
-	ProfileSettings,
-} from "@/entities/profile";
+import type { Profile } from "@/entities/profile";
 
-const clampScore = (value: number) => Math.max(0, Math.min(100, value));
+export type FinancialData = {
+	assets: number;
+	income: number;
+	expense: number;
+};
 
-export function calcFinanceScore(
-	financial: FinancialData,
-	settings: ProfileSettings,
-): number {
-	const income = financial.fin_income;
-	const expense = financial.fin_expense;
-	const assets = financial.fin_assets;
+export type HappinessData = {
+	hap_time: number;
+	hap_health: number;
+	hap_relation: number;
+	hap_selfreal: number;
+};
 
+export type Settings = {
+	weightHappiness: number;
+	weightFinance: number;
+	targetAssets: number | null;
+};
+
+export type SnapshotData = {
+	financial: FinancialData;
+	happiness: HappinessData;
+};
+
+/**
+ * 財務健全性指数（0〜100にキャッピング）
+ * = 収支バランス比率 と 資産達成率 の平均
+ */
+export function calcFinanceScore(financial: FinancialData, settings: Settings): number {
 	const cashflowRatio =
-		income > 0 ? ((income - expense) / income) * 100 : 0;
-
+		Math.max(0, (financial.income - financial.expense) / financial.income) * 100;
 	const assetRatio =
 		settings.targetAssets && settings.targetAssets > 0
-			? (assets / settings.targetAssets) * 100
+			? Math.min(100, (financial.assets / settings.targetAssets) * 100)
 			: 50;
-
-	return (clampScore(cashflowRatio) + clampScore(assetRatio)) / 2;
+	return (cashflowRatio + assetRatio) / 2;
 }
 
+/**
+ * ハッピースコア（項目の単純平均）
+ */
 export function calcHappinessScore(happiness: HappinessData): number {
 	const values = Object.values(happiness);
-	return values.reduce((sum, value) => sum + value, 0) / values.length;
+	return values.reduce((sum, v) => sum + v, 0) / values.length;
 }
 
-export function calcHamaScore(
-	financial: FinancialData,
-	happiness: HappinessData,
-	settings: ProfileSettings,
-): number {
-	const financeScore = calcFinanceScore(financial, settings);
-	const happinessScore = calcHappinessScore(happiness);
-	const totalWeight = settings.weightHappiness + settings.weightFinance;
-
-	if (totalWeight <= 0) {
-		return happinessScore;
-	}
-
-	const normalizedHappinessWeight = settings.weightHappiness / totalWeight;
-	const normalizedFinanceWeight = settings.weightFinance / totalWeight;
-
-	return (
-		happinessScore * normalizedHappinessWeight +
-		financeScore * normalizedFinanceWeight
-	);
+/**
+ * HAMAスコア（総合）
+ */
+export function calcHamaScore(data: SnapshotData, settings: Settings): number {
+	const finScore = calcFinanceScore(data.financial, settings);
+	const hapScore = calcHappinessScore(data.happiness);
+	return hapScore * settings.weightHappiness + finScore * settings.weightFinance;
 }
 
 export function calcHamaScoreFromProfile(profile: Profile): number {
-	return calcHamaScore(profile.financial, profile.happiness, profile.settings);
+	return calcHamaScore(
+		{
+			financial: {
+				assets: profile.financial.fin_assets,
+				income: profile.financial.fin_income,
+				expense: profile.financial.fin_expense,
+			},
+			happiness: profile.happiness,
+		},
+		{
+			weightHappiness: profile.settings.weightHappiness,
+			weightFinance: profile.settings.weightFinance,
+			targetAssets: profile.settings.targetAssets,
+		},
+	);
 }

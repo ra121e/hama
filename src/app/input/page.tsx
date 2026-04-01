@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { HamaScore } from "@/features/charts/HamaScore";
 import { RadarChart } from "@/features/charts/RadarChart";
 import { FinancialInput } from "@/features/financial/components/FinancialInput";
 import { HappinessSlider } from "@/features/happiness/components/HappinessSlider";
@@ -52,24 +53,28 @@ export default function InputPage() {
       </header>
 
       {isHydrated ? (
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_420px] lg:items-start">
-          <div className="space-y-6">
-            <FinancialInput />
-            <HappinessSlider />
-          </div>
+        <>
+          <HamaScore />
 
-          <Card className="lg:sticky lg:top-24">
-            <CardHeader>
-              <CardTitle>ハッピー4軸レーダーチャート</CardTitle>
-              <CardDescription>
-                スライダー変更に合わせてリアルタイムで更新されます。
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <RadarChart happiness={happiness} scenarioName="現在入力" />
-            </CardContent>
-          </Card>
-        </div>
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_420px] lg:items-start">
+            <div className="space-y-6">
+              <FinancialInput />
+              <HappinessSlider />
+            </div>
+
+            <Card className="lg:sticky lg:top-24">
+              <CardHeader>
+                <CardTitle>ハッピー4軸レーダーチャート</CardTitle>
+                <CardDescription>
+                  スライダー変更に合わせてリアルタイムで更新されます。
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <RadarChart happiness={happiness} scenarioName="現在入力" />
+              </CardContent>
+            </Card>
+          </div>
+        </>
       ) : (
         <div className="rounded-md border border-border px-4 py-6 text-sm text-muted-foreground">
           入力データを準備しています...
