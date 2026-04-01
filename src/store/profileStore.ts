@@ -41,6 +41,7 @@ type ProfileStoreState = {
 	profile: Profile;
 	hamaScore: number;
 	activeScenarioId: string;
+	activeTimepoint: Timepoint;
 	snapshotsByScenario: Record<string, ScenarioSnapshotState>;
 	isHydrated: boolean;
 	isLoading: boolean;
@@ -48,6 +49,7 @@ type ProfileStoreState = {
 	lastSavedAt: string | null;
 	errorMessage: string | null;
 	setActiveScenario: (scenarioId: string) => void;
+	setActiveTimepoint: (timepoint: Timepoint) => void;
 	setProfileMeta: (patch: Partial<Pick<Profile, "id" | "name" | "userId">>) => void;
 	updateFinancial: (itemId: FinancialItemId, value: number) => void;
 	updateHappiness: (itemId: HappinessItemId, value: number, memo?: string) => void;
@@ -62,6 +64,8 @@ type ProfileStoreState = {
 };
 
 const TIMEPOINTS: Timepoint[] = ["now", "5y", "10y", "20y"];
+const FINANCIAL_ITEM_IDS: FinancialItemId[] = ["fin_assets", "fin_income", "fin_expense"];
+const HAPPINESS_ITEM_IDS: HappinessItemId[] = ["hap_time", "hap_health", "hap_relation", "hap_selfreal"];
 
 const createSnapshotId = (scenarioId: string, timepoint: Timepoint, itemId: ItemId) =>
 	`${scenarioId}:${timepoint}:${itemId}`;
@@ -116,6 +120,58 @@ const createSnapshotsFromProfile = (
 	}));
 
 	return [...financialSnapshots, ...happinessSnapshots];
+};
+
+const applySnapshotsToProfile = (profile: Profile, snapshots?: Snapshot[]): Profile => {
+	if (!snapshots || snapshots.length === 0) {
+		return profile;
+	}
+
+	const nextFinancial = { ...profile.financial };
+	const nextHappiness = { ...profile.happiness };
+	const nextHappinessMemo = { ...profile.happinessMemo };
+
+	for (const snapshot of snapshots) {
+		if (snapshot.categoryId === "financial" && FINANCIAL_ITEM_IDS.includes(snapshot.itemId as FinancialItemId)) {
+			nextFinancial[snapshot.itemId as FinancialItemId] = snapshot.value;
+		}
+
+		if (snapshot.categoryId === "happiness" && HAPPINESS_ITEM_IDS.includes(snapshot.itemId as HappinessItemId)) {
+			const itemId = snapshot.itemId as HappinessItemId;
+			nextHappiness[itemId] = snapshot.value;
+			if (snapshot.memo !== undefined) {
+				nextHappinessMemo[itemId] = snapshot.memo;
+			}
+		}
+	}
+
+	return {
+		...profile,
+		financial: nextFinancial,
+		happiness: nextHappiness,
+		happinessMemo: nextHappinessMemo,
+	};
+};
+
+const resolveProfileForSelection = (
+	profile: Profile,
+	snapshotsByScenario: Record<string, ScenarioSnapshotState>,
+	scenarioId: string,
+	timepoint: Timepoint,
+): Profile => {
+	const scenarioSnapshots = snapshotsByScenario[scenarioId] ?? {};
+	const targetSnapshots = scenarioSnapshots[timepoint];
+
+	if (targetSnapshots && targetSnapshots.length > 0) {
+		return applySnapshotsToProfile(profile, targetSnapshots);
+	}
+
+	const nowSnapshots = scenarioSnapshots.now;
+	if (nowSnapshots && nowSnapshots.length > 0) {
+		return applySnapshotsToProfile(profile, nowSnapshots);
+	}
+
+	return profile;
 };
 
 const withUpdatedTimestamp = (profile: Profile): Profile => ({
@@ -187,6 +243,7 @@ export const useProfileStore = create<ProfileStoreState>((set, get) => ({
 	profile: initialProfile,
 	hamaScore: calcHamaScoreFromProfile(initialProfile),
 	activeScenarioId: "base",
+	activeTimepoint: "now",
 	snapshotsByScenario: {},
 	isHydrated: false,
 	isLoading: false,
@@ -195,7 +252,50 @@ export const useProfileStore = create<ProfileStoreState>((set, get) => ({
 	errorMessage: null,
 
 	setActiveScenario: (scenarioId) => {
-		set({ activeScenarioId: scenarioId });
+		set((state) => {
+			const nextProfile = resolveProfileForSelection(
+				state.profile,
+				state.snapshotsByScenario,
+				scenarioId,
+				state.activeTimepoint,
+			);
+
+			return {
+				activeScenarioId: scenarioId,
+				profile: nextProfile,
+				hamaScore: calcHamaScoreFromProfile(nextProfile),
+			};
+		});
+	},
+
+	setActiveTimepoint: (timepoint) => {
+		set((state) => {
+			const nextProfile = resolveProfileForSelection(
+				state.profile,
+				state.snapshotsByScenario,
+				state.activeScenarioId,
+				timepoint,
+			);
+
+			const hasTargetSnapshots = Boolean(
+				state.snapshotsByScenario[state.activeScenarioId]?.[timepoint]?.length,
+			);
+
+			return {
+				activeTimepoint: timepoint,
+				profile: nextProfile,
+				hamaScore: calcHamaScoreFromProfile(nextProfile),
+				snapshotsByScenario: hasTargetSnapshots
+					? state.snapshotsByScenario
+					: {
+							...state.snapshotsByScenario,
+							[state.activeScenarioId]: {
+								...state.snapshotsByScenario[state.activeScenarioId],
+								[timepoint]: createSnapshotsFromProfile(nextProfile, state.activeScenarioId, timepoint),
+							},
+						},
+			};
+		});
 	},
 
 	setProfileMeta: (patch) => {
@@ -217,9 +317,22 @@ export const useProfileStore = create<ProfileStoreState>((set, get) => ({
 				},
 			});
 
+			const nextSnapshots = createSnapshotsFromProfile(
+				nextProfile,
+				state.activeScenarioId,
+				state.activeTimepoint,
+			);
+
 			return {
 				profile: nextProfile,
 				hamaScore: calcHamaScoreFromProfile(nextProfile),
+				snapshotsByScenario: {
+					...state.snapshotsByScenario,
+					[state.activeScenarioId]: {
+						...state.snapshotsByScenario[state.activeScenarioId],
+						[state.activeTimepoint]: nextSnapshots,
+					},
+				},
 			};
 		});
 	},
@@ -241,9 +354,22 @@ export const useProfileStore = create<ProfileStoreState>((set, get) => ({
 							},
 				});
 
+			const nextSnapshots = createSnapshotsFromProfile(
+				nextProfile,
+				state.activeScenarioId,
+				state.activeTimepoint,
+			);
+
 				return {
 					profile: nextProfile,
 					hamaScore: calcHamaScoreFromProfile(nextProfile),
+					snapshotsByScenario: {
+						...state.snapshotsByScenario,
+						[state.activeScenarioId]: {
+							...state.snapshotsByScenario[state.activeScenarioId],
+							[state.activeTimepoint]: nextSnapshots,
+						},
+					},
 				};
 			});
 	},
@@ -291,6 +417,7 @@ export const useProfileStore = create<ProfileStoreState>((set, get) => ({
 	loadProfileFromDb: async () => {
 		set({ isLoading: true, errorMessage: null });
 		try {
+			const currentTimepoint = get().activeTimepoint;
 			const response = await fetch("/api/profile", {
 				method: "GET",
 				headers: {
@@ -305,9 +432,18 @@ export const useProfileStore = create<ProfileStoreState>((set, get) => ({
 
 			const payload = (await response.json()) as ServerPayload;
 			const hydrated = hydrateFromServer(payload);
+			const nextProfile = resolveProfileForSelection(
+				hydrated.profile,
+				hydrated.snapshotsByScenario,
+				hydrated.activeScenarioId,
+				currentTimepoint,
+			);
 
 			set({
 				...hydrated,
+				profile: nextProfile,
+				hamaScore: calcHamaScoreFromProfile(nextProfile),
+				activeTimepoint: currentTimepoint,
 				isHydrated: true,
 				isLoading: false,
 				errorMessage: null,
@@ -327,6 +463,8 @@ export const useProfileStore = create<ProfileStoreState>((set, get) => ({
 			return;
 		}
 
+		const currentTimepoint = state.activeTimepoint;
+
 		set({ isSaving: true, errorMessage: null });
 
 		try {
@@ -338,7 +476,7 @@ export const useProfileStore = create<ProfileStoreState>((set, get) => ({
 				body: JSON.stringify({
 					profile: state.profile,
 					scenarioId: state.activeScenarioId,
-					timepoint: "now",
+					timepoint: currentTimepoint,
 				}),
 			});
 
@@ -348,9 +486,18 @@ export const useProfileStore = create<ProfileStoreState>((set, get) => ({
 
 			const payload = (await response.json()) as ServerPayload;
 			const hydrated = hydrateFromServer(payload);
+			const nextProfile = resolveProfileForSelection(
+				hydrated.profile,
+				hydrated.snapshotsByScenario,
+				hydrated.activeScenarioId,
+				currentTimepoint,
+			);
 
 			set({
 				...hydrated,
+				profile: nextProfile,
+				hamaScore: calcHamaScoreFromProfile(nextProfile),
+				activeTimepoint: currentTimepoint,
 				isSaving: false,
 				lastSavedAt: new Date().toISOString(),
 				errorMessage: null,
@@ -374,6 +521,7 @@ export const useProfileStore = create<ProfileStoreState>((set, get) => ({
 			profile: nextProfile,
 			hamaScore: calcHamaScoreFromProfile(nextProfile),
 			activeScenarioId: "base",
+			activeTimepoint: "now",
 			snapshotsByScenario: {},
 			isHydrated: false,
 			isLoading: false,

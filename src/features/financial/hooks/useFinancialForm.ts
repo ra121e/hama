@@ -27,6 +27,7 @@ export function useFinancialForm() {
   const financial = useProfileStore((state) => state.profile.financial);
   const displayUnit = useProfileStore((state) => state.profile.settings.displayUnit);
   const activeScenarioId = useProfileStore((state) => state.activeScenarioId);
+  const activeTimepoint = useProfileStore((state) => state.activeTimepoint);
   const isHydrated = useProfileStore((state) => state.isHydrated);
   const hamaScore = useProfileStore((state) => state.hamaScore);
   const updateFinancial = useProfileStore((state) => state.updateFinancial);
@@ -117,6 +118,7 @@ export function useFinancialForm() {
     };
   }, [
     activeScenarioId,
+    activeTimepoint,
     displayUnit,
     financial.fin_assets,
     financial.fin_income,

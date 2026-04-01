@@ -7,6 +7,7 @@ import { DualAxisChart } from "@/features/charts/DualAxisChart";
 import { HamaScore } from "@/features/charts/HamaScore";
 import { RadarChart } from "@/features/charts/RadarChart";
 import { HappinessSlider } from "@/features/happiness/components/HappinessSlider";
+import { TimepointSelector } from "@/features/scenario/components/TimepointSelector";
 import { useProfileStore } from "@/store/profileStore";
 
 const navItems = [
@@ -62,6 +63,8 @@ export default function Home() {
             </button>
           </div>
         ) : null}
+
+        <TimepointSelector className="mt-2" />
       </header>
 
       {isHydrated ? (

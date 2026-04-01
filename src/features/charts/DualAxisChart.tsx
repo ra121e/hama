@@ -10,6 +10,7 @@ import { calcHamaScore } from "@/shared/lib/hama-score";
 import { useProfileStore } from "@/store/profileStore";
 import { useUIStore } from "@/store/uiStore";
 import { cn } from "@/lib/utils";
+import type { Snapshot } from "@/entities/scenario";
 
 echarts.use([LineChart, GridComponent, LegendComponent, TooltipComponent, CanvasRenderer]);
 
@@ -47,6 +48,27 @@ const createBasePoint = (profile: ReturnType<typeof useProfileStore.getState>["p
   hap_selfreal: profile.happiness.hap_selfreal,
 });
 
+const applySnapshotToPoint = (point: PointData, snapshots: Snapshot[]) => {
+  const next = { ...point };
+
+  for (const snapshot of snapshots) {
+    if (snapshot.categoryId === "financial") {
+      if (snapshot.itemId === "fin_assets") next.assets = snapshot.value;
+      if (snapshot.itemId === "fin_income") next.income = snapshot.value;
+      if (snapshot.itemId === "fin_expense") next.expense = snapshot.value;
+    }
+
+    if (snapshot.categoryId === "happiness") {
+      if (snapshot.itemId === "hap_time") next.hap_time = snapshot.value;
+      if (snapshot.itemId === "hap_health") next.hap_health = snapshot.value;
+      if (snapshot.itemId === "hap_relation") next.hap_relation = snapshot.value;
+      if (snapshot.itemId === "hap_selfreal") next.hap_selfreal = snapshot.value;
+    }
+  }
+
+  return next;
+};
+
 export function DualAxisChart({ className, showHappinessSeries = true }: DualAxisChartProps) {
   const chartContainerRef = useRef<HTMLDivElement | null>(null);
   const chartInstanceRef = useRef<echarts.ECharts | null>(null);
@@ -61,26 +83,16 @@ export function DualAxisChart({ className, showHappinessSeries = true }: DualAxi
     const scenarioSnapshots = snapshotsByScenario[activeScenarioId] ?? {};
 
     const points: PointData[] = [];
-    let carry = createBasePoint(profile);
+    const basePointFromProfile = createBasePoint(profile);
+    const nowSnapshots = scenarioSnapshots.now ?? [];
+    let carry =
+      nowSnapshots.length > 0
+        ? applySnapshotToPoint(basePointFromProfile, nowSnapshots)
+        : basePointFromProfile;
 
     for (const timepoint of TIMEPOINTS) {
       const snapshots = scenarioSnapshots[timepoint.key] ?? [];
-      const next: PointData = { ...carry };
-
-      for (const snapshot of snapshots) {
-        if (snapshot.categoryId === "financial") {
-          if (snapshot.itemId === "fin_assets") next.assets = snapshot.value;
-          if (snapshot.itemId === "fin_income") next.income = snapshot.value;
-          if (snapshot.itemId === "fin_expense") next.expense = snapshot.value;
-        }
-
-        if (snapshot.categoryId === "happiness") {
-          if (snapshot.itemId === "hap_time") next.hap_time = snapshot.value;
-          if (snapshot.itemId === "hap_health") next.hap_health = snapshot.value;
-          if (snapshot.itemId === "hap_relation") next.hap_relation = snapshot.value;
-          if (snapshot.itemId === "hap_selfreal") next.hap_selfreal = snapshot.value;
-        }
-      }
+      const next: PointData = applySnapshotToPoint(carry, snapshots);
 
       points.push(next);
       carry = next;

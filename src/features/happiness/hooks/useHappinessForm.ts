@@ -21,6 +21,7 @@ export function useHappinessForm() {
   const happiness = useProfileStore((state) => state.profile.happiness);
   const memos = useProfileStore((state) => state.profile.happinessMemo);
   const activeScenarioId = useProfileStore((state) => state.activeScenarioId);
+  const activeTimepoint = useProfileStore((state) => state.activeTimepoint);
   const isHydrated = useProfileStore((state) => state.isHydrated);
   const hamaScore = useProfileStore((state) => state.hamaScore);
   const updateHappiness = useProfileStore((state) => state.updateHappiness);
@@ -74,6 +75,7 @@ export function useHappinessForm() {
     };
   }, [
     activeScenarioId,
+    activeTimepoint,
     happiness.hap_time,
     happiness.hap_health,
     happiness.hap_relation,

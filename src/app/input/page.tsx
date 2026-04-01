@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import Link from "next/link";
 import { FinancialInput } from "@/features/financial/components/FinancialInput";
 import { HappinessSlider } from "@/features/happiness/components/HappinessSlider";
+import { TimepointSelector } from "@/features/scenario/components/TimepointSelector";
 import { useProfileStore } from "@/store/profileStore";
 
 export default function InputPage() {
@@ -50,6 +51,8 @@ export default function InputPage() {
             </button>
           </div>
         ) : null}
+
+        <TimepointSelector className="mt-2" />
       </header>
 
       {isHydrated ? (
