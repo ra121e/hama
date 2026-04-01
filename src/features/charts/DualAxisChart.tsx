@@ -226,6 +226,20 @@ export function DualAxisChart({ className, showHappinessSeries = true }: DualAxi
           nameGap: 46,
           min: scoreAxisRange.min,
           max: scoreAxisRange.max,
+          axisLabel: {
+            formatter: (value: number) => {
+              if (value < 0 || value > 100) {
+                return "";
+              }
+
+              const rounded = Math.round(value);
+              if (rounded % 20 !== 0) {
+                return "";
+              }
+
+              return `${rounded}`;
+            },
+          },
         },
       ],
       series: [
