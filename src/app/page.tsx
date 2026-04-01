@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { DualAxisChart } from "@/features/charts/DualAxisChart";
 import { HamaScore } from "@/features/charts/HamaScore";
 import { RadarChart } from "@/features/charts/RadarChart";
+import { FinancialInput } from "@/features/financial/components/FinancialInput";
 import { HappinessSlider } from "@/features/happiness/components/HappinessSlider";
 import { TimepointSelector } from "@/features/scenario/components/TimepointSelector";
 import { useProfileStore } from "@/store/profileStore";
@@ -64,29 +65,30 @@ export default function Home() {
           </div>
         ) : null}
 
-        <TimepointSelector className="mt-2" />
       </header>
 
       {isHydrated ? (
         <>
-          <section className="grid gap-6 lg:grid-cols-2 lg:items-start">
+          <section className="grid gap-6 lg:grid-cols-[minmax(0,0.43fr)_minmax(0,0.57fr)] lg:items-start">
             <div className="space-y-6">
-              <HamaScore />
-
               <Card className="border-primary/20 bg-card/85 shadow-sm">
-                <CardHeader>
-                  <CardTitle>ハッピー入力</CardTitle>
+                <CardHeader className="pb-3">
+                  <CardTitle>入力フォーム</CardTitle>
                   <CardDescription>
-                    スライダーを調整すると、HAMAスコアと各チャートがリアルタイムで更新されます。
+                    左側で時間軸ごとに入力し、右側で結果をリアルタイムに確認できます。
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-5">
+                  <TimepointSelector />
                   <HappinessSlider />
+                  <FinancialInput />
                 </CardContent>
               </Card>
             </div>
 
-            <div className="space-y-6">
+            <div className="space-y-6 lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto lg:pr-1">
+              <HamaScore />
+
               <Card className="border-primary/20 bg-card/85 shadow-sm">
                 <CardHeader>
                   <CardTitle>将来推移（デュアル軸ライン）</CardTitle>
