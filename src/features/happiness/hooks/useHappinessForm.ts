@@ -1,10 +1,12 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import type { HappinessItemId } from "@/entities/profile";
 import { useProfileStore } from "@/store/profileStore";
 import { happinessFormSchema, happinessMemoSchema } from "@/features/happiness/schema";
 import { HAPPINESS_FIELDS } from "@/features/happiness/types";
+
+const AUTO_SAVE_DEBOUNCE_MS = 700;
 
 type HappinessErrors = Partial<Record<HappinessItemId, string>>;
 
@@ -18,8 +20,12 @@ const normalizeScore = (value: number) => {
 export function useHappinessForm() {
   const happiness = useProfileStore((state) => state.profile.happiness);
   const memos = useProfileStore((state) => state.profile.happinessMemo);
+  const activeScenarioId = useProfileStore((state) => state.activeScenarioId);
+  const isHydrated = useProfileStore((state) => state.isHydrated);
   const hamaScore = useProfileStore((state) => state.hamaScore);
   const updateHappiness = useProfileStore((state) => state.updateHappiness);
+  const persistProfileToDb = useProfileStore((state) => state.persistProfileToDb);
+  const hasInitializedAutoSave = useRef(false);
 
   const errors = useMemo<HappinessErrors>(() => {
     const result = happinessFormSchema.safeParse(happiness);
@@ -48,6 +54,37 @@ export function useHappinessForm() {
 
     updateHappiness(itemId, happiness[itemId], memo);
   };
+
+  useEffect(() => {
+    if (!isHydrated) {
+      return;
+    }
+
+    if (!hasInitializedAutoSave.current) {
+      hasInitializedAutoSave.current = true;
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      void persistProfileToDb();
+    }, AUTO_SAVE_DEBOUNCE_MS);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [
+    activeScenarioId,
+    happiness.hap_time,
+    happiness.hap_health,
+    happiness.hap_relation,
+    happiness.hap_selfreal,
+    isHydrated,
+    memos.hap_time,
+    memos.hap_health,
+    memos.hap_relation,
+    memos.hap_selfreal,
+    persistProfileToDb,
+  ]);
 
   return {
     fields: HAPPINESS_FIELDS,

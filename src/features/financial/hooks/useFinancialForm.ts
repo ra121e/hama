@@ -1,10 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { DisplayUnit, FinancialItemId } from "@/entities/profile";
 import { useProfileStore } from "@/store/profileStore";
 import { financialFormSchema, financialWarningSchema } from "@/features/financial/schema";
 import type { CashflowPeriod, CashflowPeriodState, FinancialWarningMap } from "@/features/financial/types";
+
+const AUTO_SAVE_DEBOUNCE_MS = 700;
 
 const UNIT_MULTIPLIER: Record<DisplayUnit, number> = {
   yen: 1,
@@ -24,11 +26,15 @@ const DEFAULT_PERIOD_STATE: CashflowPeriodState = {
 export function useFinancialForm() {
   const financial = useProfileStore((state) => state.profile.financial);
   const displayUnit = useProfileStore((state) => state.profile.settings.displayUnit);
+  const activeScenarioId = useProfileStore((state) => state.activeScenarioId);
+  const isHydrated = useProfileStore((state) => state.isHydrated);
   const hamaScore = useProfileStore((state) => state.hamaScore);
   const updateFinancial = useProfileStore((state) => state.updateFinancial);
   const updateSettings = useProfileStore((state) => state.updateSettings);
+  const persistProfileToDb = useProfileStore((state) => state.persistProfileToDb);
 
   const [periodState, setPeriodState] = useState<CashflowPeriodState>(DEFAULT_PERIOD_STATE);
+  const hasInitializedAutoSave = useRef(false);
 
   const unitMultiplier = UNIT_MULTIPLIER[displayUnit];
 
@@ -91,6 +97,33 @@ export function useFinancialForm() {
 
     updateFinancial(field, annualValue);
   };
+
+  useEffect(() => {
+    if (!isHydrated) {
+      return;
+    }
+
+    if (!hasInitializedAutoSave.current) {
+      hasInitializedAutoSave.current = true;
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      void persistProfileToDb();
+    }, AUTO_SAVE_DEBOUNCE_MS);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [
+    activeScenarioId,
+    displayUnit,
+    financial.fin_assets,
+    financial.fin_income,
+    financial.fin_expense,
+    isHydrated,
+    persistProfileToDb,
+  ]);
 
   return {
     values,

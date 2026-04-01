@@ -1,7 +1,23 @@
+"use client";
+
+import { useEffect } from "react";
 import { FinancialInput } from "@/features/financial/components/FinancialInput";
 import { HappinessSlider } from "@/features/happiness/components/HappinessSlider";
+import { useProfileStore } from "@/store/profileStore";
 
 export default function InputPage() {
+  const loadProfileFromDb = useProfileStore((state) => state.loadProfileFromDb);
+  const clearError = useProfileStore((state) => state.clearError);
+  const isLoading = useProfileStore((state) => state.isLoading);
+  const isSaving = useProfileStore((state) => state.isSaving);
+  const isHydrated = useProfileStore((state) => state.isHydrated);
+  const errorMessage = useProfileStore((state) => state.errorMessage);
+  const lastSavedAt = useProfileStore((state) => state.lastSavedAt);
+
+  useEffect(() => {
+    void loadProfileFromDb();
+  }, [loadProfileFromDb]);
+
   return (
     <main className="mx-auto w-full max-w-6xl space-y-8 px-6 py-10 sm:px-8">
       <header className="space-y-2">
@@ -9,10 +25,39 @@ export default function InputPage() {
         <p className="text-sm text-muted-foreground">
           ハッピーカテゴリと財務カテゴリを同じページで入力できます。
         </p>
+        <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+          {isLoading ? <span>DBから読込中...</span> : null}
+          {isSaving ? <span>保存中...</span> : null}
+          {lastSavedAt ? (
+            <span>
+              最終保存: {new Date(lastSavedAt).toLocaleTimeString("ja-JP")}
+            </span>
+          ) : null}
+        </div>
+        {errorMessage ? (
+          <div className="flex items-center gap-3 rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-xs text-destructive">
+            <span>{errorMessage}</span>
+            <button
+              type="button"
+              onClick={clearError}
+              className="rounded-sm border border-destructive/40 px-2 py-0.5"
+            >
+              閉じる
+            </button>
+          </div>
+        ) : null}
       </header>
 
-      <FinancialInput />
-      <HappinessSlider />
+      {isHydrated ? (
+        <>
+          <FinancialInput />
+          <HappinessSlider />
+        </>
+      ) : (
+        <div className="rounded-md border border-border px-4 py-6 text-sm text-muted-foreground">
+          入力データを準備しています...
+        </div>
+      )}
     </main>
   );
 }
