@@ -1,0 +1,86 @@
+// prisma/schema.prisma
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ========================================
+// MVP スコープ
+// ========================================
+
+// プロファイル（人生計画1件）
+// userId は MVP では null、フェーズ2で Clerk の userId を格納
+model Profile {
+  id        String    @id @default(uuid())
+  name      String
+  currency  String    @default("JPY")
+  userId    String?   // nullable → フェーズ2で String @unique に変更
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  scenarios Scenario[]
+  settings  Settings?
+}
+
+// シナリオ（プロファイル配下）
+model Scenario {
+  id        String     @id @default(uuid())
+  name      String
+  type      String     // base | optimistic | pessimistic | custom
+  isDefault Boolean    @default(false)
+  createdAt DateTime   @default(now())
+  profile   Profile    @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  profileId String
+  snapshots Snapshot[]
+}
+
+// スナップショット（シナリオ × 時点 × 項目の値）
+model Snapshot {
+  id         String   @id @default(uuid())
+  timepoint  String   // now | 5y | 10y | 20y
+  categoryId String   // financial | happiness
+  itemId     String   // fin_assets | hap_health など
+  value      Float
+  memo       String?
+  scenario   Scenario @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+  scenarioId String
+}
+
+// 設定（プロファイル別）
+model Settings {
+  weightHappiness Float   @default(0.7)
+  weightFinance   Float   @default(0.3)
+  targetAssets    Float?
+  displayUnit     String  @default("man") // 円 | 万円
+  profile         Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  profileId       String  @id
+}
+
+// ========================================
+// フェーズ2以降（認証追加時に有効化）
+// ========================================
+
+// model User {
+//   id        String    @id @default(uuid())
+//   clerkId   String    @unique
+//   email     String    @unique
+//   name      String?
+//   profiles  Profile[]
+//   createdAt DateTime  @default(now())
+// }
+
+// ========================================
+// フェーズ3以降（企業向け拡張時に有効化）
+// ========================================
+
+// model Organization {
+//   id         String   @id @default(uuid())
+//   clerkOrgId String   @unique
+//   name       String
+//   users      User[]
+//   createdAt  DateTime @default(now())
+// }
