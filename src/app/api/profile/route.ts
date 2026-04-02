@@ -322,82 +322,92 @@ const fetchProfileBundle = async () => {
 
 const saveProfile = async (request: Request) => {
   const body = (await request.json()) as SaveProfileRequest;
+
+  if (!body?.profile?.financial || !body.profile.happiness) {
+    return Response.json(
+      { message: "Invalid save payload" },
+      { status: 400 },
+    );
+  }
+
   const scenarioId = body.scenarioId ?? DEFAULT_SCENARIO_ID;
   const scenarioName = body.scenarioName ?? DEFAULT_SCENARIO_NAME;
   const scenarioType = body.scenarioType ?? "base";
   const timepoint = body.timepoint ?? "now";
 
-  const profileFromDb = body.profile.id
-    ? await prisma.profile.findUnique({ where: { id: body.profile.id } })
-    : await prisma.profile.findFirst({ orderBy: { createdAt: "asc" } });
+  await prisma.$transaction(async (tx) => {
+    const profileFromDb = body.profile.id
+      ? await tx.profile.findUnique({ where: { id: body.profile.id } })
+      : await tx.profile.findFirst({ orderBy: { createdAt: "asc" } });
 
-  const profile = profileFromDb
-    ? await prisma.profile.update({
-        where: { id: profileFromDb.id },
-        data: {
-          name: body.profile.name ?? profileFromDb.name,
-          currency: body.profile.currency ?? profileFromDb.currency,
-          userId: body.profile.userId ?? profileFromDb.userId,
-        },
-      })
-    : await prisma.profile.create({
-        data: {
-          name: body.profile.name ?? DEFAULT_PROFILE_NAME,
-          currency: body.profile.currency ?? "JPY",
-          userId: body.profile.userId ?? null,
-        },
-      });
+    const profile = profileFromDb
+      ? await tx.profile.update({
+          where: { id: profileFromDb.id },
+          data: {
+            name: body.profile.name ?? profileFromDb.name,
+            currency: body.profile.currency ?? profileFromDb.currency,
+            userId: body.profile.userId ?? profileFromDb.userId,
+          },
+        })
+      : await tx.profile.create({
+          data: {
+            name: body.profile.name ?? DEFAULT_PROFILE_NAME,
+            currency: body.profile.currency ?? "JPY",
+            userId: body.profile.userId ?? null,
+          },
+        });
 
-  await prisma.settings.upsert({
-    where: { profileId: profile.id },
-    update: {
-      weightHappiness:
-        body.profile.settings?.weightHappiness ?? DEFAULT_SETTINGS.weightHappiness,
-      weightFinance: body.profile.settings?.weightFinance ?? DEFAULT_SETTINGS.weightFinance,
-      targetAssets: body.profile.settings?.targetAssets ?? null,
-      displayUnit: body.profile.settings?.displayUnit ?? DEFAULT_SETTINGS.displayUnit,
-    },
-    create: {
-      profileId: profile.id,
-      weightHappiness:
-        body.profile.settings?.weightHappiness ?? DEFAULT_SETTINGS.weightHappiness,
-      weightFinance: body.profile.settings?.weightFinance ?? DEFAULT_SETTINGS.weightFinance,
-      targetAssets: body.profile.settings?.targetAssets ?? null,
-      displayUnit: body.profile.settings?.displayUnit ?? DEFAULT_SETTINGS.displayUnit,
-    },
-  });
+    await tx.settings.upsert({
+      where: { profileId: profile.id },
+      update: {
+        weightHappiness:
+          body.profile.settings?.weightHappiness ?? DEFAULT_SETTINGS.weightHappiness,
+        weightFinance: body.profile.settings?.weightFinance ?? DEFAULT_SETTINGS.weightFinance,
+        targetAssets: body.profile.settings?.targetAssets ?? null,
+        displayUnit: body.profile.settings?.displayUnit ?? DEFAULT_SETTINGS.displayUnit,
+      },
+      create: {
+        profileId: profile.id,
+        weightHappiness:
+          body.profile.settings?.weightHappiness ?? DEFAULT_SETTINGS.weightHappiness,
+        weightFinance: body.profile.settings?.weightFinance ?? DEFAULT_SETTINGS.weightFinance,
+        targetAssets: body.profile.settings?.targetAssets ?? null,
+        displayUnit: body.profile.settings?.displayUnit ?? DEFAULT_SETTINGS.displayUnit,
+      },
+    });
 
-  const scenario = await prisma.scenario.upsert({
-    where: { id: scenarioId },
-    update: {
-      name: scenarioName,
-      type: scenarioType,
-      profileId: profile.id,
-    },
-    create: {
-      id: scenarioId,
-      profileId: profile.id,
-      name: scenarioName,
-      type: scenarioType,
-      isDefault: scenarioId === DEFAULT_SCENARIO_ID,
-    },
-  });
+    const scenario = await tx.scenario.upsert({
+      where: { id: scenarioId },
+      update: {
+        name: scenarioName,
+        type: scenarioType,
+        profileId: profile.id,
+      },
+      create: {
+        id: scenarioId,
+        profileId: profile.id,
+        name: scenarioName,
+        type: scenarioType,
+        isDefault: scenarioId === DEFAULT_SCENARIO_ID,
+      },
+    });
 
-  await prisma.snapshot.deleteMany({
-    where: {
-      scenarioId: scenario.id,
-      timepoint,
-    },
-  });
+    await tx.snapshot.deleteMany({
+      where: {
+        scenarioId: scenario.id,
+        timepoint,
+      },
+    });
 
-  await prisma.snapshot.createMany({
-    data: buildSnapshotCreateInput(
-      scenario.id,
-      body.profile.financial,
-      body.profile.happiness,
-      body.profile.happinessMemo ?? {},
-      timepoint,
-    ),
+    await tx.snapshot.createMany({
+      data: buildSnapshotCreateInput(
+        scenario.id,
+        body.profile.financial,
+        body.profile.happiness,
+        body.profile.happinessMemo ?? {},
+        timepoint,
+      ),
+    });
   });
 
   return Response.json(await fetchProfileBundle());
@@ -407,6 +417,7 @@ export async function GET() {
   try {
     return Response.json(await fetchProfileBundle());
   } catch (error) {
+    console.error("GET /api/profile failed", error);
     return Response.json(
       { message: "Failed to load profile", error: String(error) },
       { status: 500 },
@@ -418,6 +429,7 @@ export async function POST(request: Request) {
   try {
     return await saveProfile(request);
   } catch (error) {
+    console.error("POST /api/profile failed", error);
     return Response.json(
       { message: "Failed to save profile", error: String(error) },
       { status: 500 },
@@ -429,6 +441,7 @@ export async function PUT(request: Request) {
   try {
     return await saveProfile(request);
   } catch (error) {
+    console.error("PUT /api/profile failed", error);
     return Response.json(
       { message: "Failed to save profile", error: String(error) },
       { status: 500 },

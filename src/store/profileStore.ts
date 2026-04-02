@@ -239,6 +239,30 @@ const hydrateFromServer = (payload: ServerPayload): {
 
 const initialProfile = createInitialProfile();
 
+let persistInFlight = false;
+let persistRequestedWhileInFlight = false;
+
+const readApiErrorMessage = async (response: Response, fallback: string) => {
+	try {
+		const payload = (await response.json()) as {
+			message?: string;
+			error?: string;
+		};
+
+		if (payload.error) {
+			return `${fallback} (${payload.error})`;
+		}
+
+		if (payload.message) {
+			return `${fallback} (${payload.message})`;
+		}
+	} catch {
+		// Ignore JSON parse errors and keep the fallback status message.
+	}
+
+	return fallback;
+};
+
 export const useProfileStore = create<ProfileStoreState>((set, get) => ({
 	profile: initialProfile,
 	hamaScore: calcHamaScoreFromProfile(initialProfile),
@@ -458,55 +482,75 @@ export const useProfileStore = create<ProfileStoreState>((set, get) => ({
 	},
 
 	persistProfileToDb: async () => {
-		const state = get();
-		if (!state.isHydrated) {
+		if (persistInFlight) {
+			persistRequestedWhileInFlight = true;
 			return;
 		}
 
-		const currentTimepoint = state.activeTimepoint;
-
-		set({ isSaving: true, errorMessage: null });
+		persistInFlight = true;
 
 		try {
-			const response = await fetch("/api/profile", {
-				method: "PUT",
-				headers: {
-					"Content-Type": "application/json",
-				},
-				body: JSON.stringify({
-					profile: state.profile,
-					scenarioId: state.activeScenarioId,
-					timepoint: currentTimepoint,
-				}),
-			});
+			do {
+				persistRequestedWhileInFlight = false;
 
-			if (!response.ok) {
-				throw new Error(`Failed to save profile: ${response.status}`);
-			}
+				const state = get();
+				if (!state.isHydrated) {
+					continue;
+				}
 
-			const payload = (await response.json()) as ServerPayload;
-			const hydrated = hydrateFromServer(payload);
-			const nextProfile = resolveProfileForSelection(
-				hydrated.profile,
-				hydrated.snapshotsByScenario,
-				hydrated.activeScenarioId,
-				currentTimepoint,
-			);
+				const currentTimepoint = state.activeTimepoint;
 
-			set({
-				...hydrated,
-				profile: nextProfile,
-				hamaScore: calcHamaScoreFromProfile(nextProfile),
-				activeTimepoint: currentTimepoint,
-				isSaving: false,
-				lastSavedAt: new Date().toISOString(),
-				errorMessage: null,
-			});
-		} catch (error) {
-			set({
-				isSaving: false,
-				errorMessage: error instanceof Error ? error.message : "Failed to save profile",
-			});
+				set({ isSaving: true, errorMessage: null });
+
+				try {
+					const response = await fetch("/api/profile", {
+						method: "PUT",
+						headers: {
+							"Content-Type": "application/json",
+						},
+						body: JSON.stringify({
+							profile: state.profile,
+							scenarioId: state.activeScenarioId,
+							timepoint: currentTimepoint,
+						}),
+					});
+
+					if (!response.ok) {
+						throw new Error(
+							await readApiErrorMessage(
+								response,
+								`Failed to save profile: ${response.status}`,
+							),
+						);
+					}
+
+					const payload = (await response.json()) as ServerPayload;
+					const hydrated = hydrateFromServer(payload);
+					const nextProfile = resolveProfileForSelection(
+						hydrated.profile,
+						hydrated.snapshotsByScenario,
+						hydrated.activeScenarioId,
+						currentTimepoint,
+					);
+
+					set({
+						...hydrated,
+						profile: nextProfile,
+						hamaScore: calcHamaScoreFromProfile(nextProfile),
+						activeTimepoint: currentTimepoint,
+						isSaving: false,
+						lastSavedAt: new Date().toISOString(),
+						errorMessage: null,
+					});
+				} catch (error) {
+					set({
+						isSaving: false,
+						errorMessage: error instanceof Error ? error.message : "Failed to save profile",
+					});
+				}
+			} while (persistRequestedWhileInFlight);
+		} finally {
+			persistInFlight = false;
 		}
 	},
 
