@@ -26,9 +26,14 @@ export function Navbar() {
       <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
         <Link
           href="/"
-          className="text-base font-semibold tracking-[0.22em] text-foreground"
+          className="flex flex-col leading-none text-foreground"
         >
-          HAMA
+          <span className="text-lg font-semibold tracking-[0.22em] sm:text-xl">
+            HAMA
+          </span>
+          <span className="mt-1 text-[10px] font-medium tracking-[0.18em] text-muted-foreground sm:text-xs">
+            Happy Adviser Money Adviser
+          </span>
         </Link>
 
         <nav aria-label="グローバルナビゲーション" className="hidden md:block">
