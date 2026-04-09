@@ -34,11 +34,11 @@ export default function Home() {
   }, [loadProfileFromDb]);
 
   return (
-    <main className="mx-auto w-full max-w-7xl space-y-8 px-6 py-10 sm:px-8 lg:py-12">
+    <main className="mx-auto w-full max-w-7xl space-y-5 px-4 py-4 sm:px-6 sm:py-6 lg:space-y-8 lg:px-6 lg:py-12">
       {isHydrated ? (
         <>
-          <section className="grid gap-6 lg:grid-cols-[minmax(0,0.43fr)_minmax(0,0.57fr)] lg:items-start">
-            <div className="space-y-6">
+          <section className="grid h-[calc(100dvh-8.5rem)] min-h-[28rem] grid-rows-[minmax(0,2fr)_minmax(0,1fr)] gap-4 overflow-hidden lg:h-auto lg:min-h-0 lg:grid-cols-[minmax(0,0.43fr)_minmax(0,0.57fr)] lg:grid-rows-none lg:gap-6 lg:items-start lg:overflow-visible">
+            <div className="order-2 min-h-0 overflow-y-auto overscroll-contain px-1 pb-1 lg:order-1 lg:overflow-visible lg:px-0 lg:pb-0">
               <Card className="border-primary/20 bg-card/85 shadow-sm">
                 <CardHeader className="pb-3">
                   <CardTitle>入力フォーム</CardTitle>
@@ -75,7 +75,7 @@ export default function Home() {
               </Card>
             </div>
 
-            <div className="space-y-6 lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto lg:pr-1">
+            <div className="order-1 min-h-0 space-y-6 overflow-y-auto overscroll-contain px-1 pb-1 lg:order-2 lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto lg:self-start lg:px-0 lg:pb-0 lg:pr-1">
               <HamaScore />
 
               <Card className="border-primary/20 bg-card/85 shadow-sm">
