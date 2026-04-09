@@ -128,14 +128,6 @@ export function DualAxisChart({ className, showHappinessSeries = true }: DualAxi
       income: points.map((point) => toManYen(point.income)),
       expense: points.map((point) => toManYen(point.expense)),
       balance: points.map((point) => toManYen(point.income - point.expense)),
-      balancePositive: points.map((point) => {
-        const value = toManYen(point.income - point.expense);
-        return value >= 0 ? value : null;
-      }),
-      balanceNegative: points.map((point) => {
-        const value = toManYen(point.income - point.expense);
-        return value < 0 ? value : null;
-      }),
       hap_time: points.map((point) => point.hap_time),
       hap_health: points.map((point) => point.hap_health),
       hap_relation: points.map((point) => point.hap_relation),
@@ -287,20 +279,10 @@ export function DualAxisChart({ className, showHappinessSeries = true }: DualAxi
           type: "line",
           yAxisIndex: 0,
           smooth: true,
-          data: timeline.balancePositive,
+          data: timeline.balance,
           symbol: "none",
           lineStyle: { width: 0, opacity: chartOpacity.financial },
-          areaStyle: { color: "#9edbb0", opacity: 0.3 * chartOpacity.financial },
-        },
-        {
-          name: "収支差額（収入-支出）",
-          type: "line",
-          yAxisIndex: 0,
-          smooth: true,
-          data: timeline.balanceNegative,
-          symbol: "none",
-          lineStyle: { width: 0, opacity: chartOpacity.financial },
-          areaStyle: { color: "#ffffff", opacity: 1 },
+          areaStyle: { origin: "auto", color: "#9edbb0", opacity: 0.3 * chartOpacity.financial },
         },
         {
           name: "HAMAスコア",
@@ -318,7 +300,6 @@ export function DualAxisChart({ className, showHappinessSeries = true }: DualAxi
           smooth: true,
           data: showHappinessSeries ? timeline.hap_time : [],
           lineStyle: { width: 2, opacity: chartOpacity.hap_time },
-          areaStyle: { opacity: 0.06 * chartOpacity.hap_time },
         },
         {
           name: "健康",
@@ -327,7 +308,6 @@ export function DualAxisChart({ className, showHappinessSeries = true }: DualAxi
           smooth: true,
           data: showHappinessSeries ? timeline.hap_health : [],
           lineStyle: { width: 2, opacity: chartOpacity.hap_health },
-          areaStyle: { opacity: 0.06 * chartOpacity.hap_health },
         },
         {
           name: "人間関係",
@@ -336,7 +316,6 @@ export function DualAxisChart({ className, showHappinessSeries = true }: DualAxi
           smooth: true,
           data: showHappinessSeries ? timeline.hap_relation : [],
           lineStyle: { width: 2, opacity: chartOpacity.hap_relation },
-          areaStyle: { opacity: 0.06 * chartOpacity.hap_relation },
         },
         {
           name: "自己実現",
@@ -345,7 +324,6 @@ export function DualAxisChart({ className, showHappinessSeries = true }: DualAxi
           smooth: true,
           data: showHappinessSeries ? timeline.hap_selfreal : [],
           lineStyle: { width: 2, opacity: chartOpacity.hap_selfreal },
-          areaStyle: { opacity: 0.06 * chartOpacity.hap_selfreal },
         },
       ],
     };
