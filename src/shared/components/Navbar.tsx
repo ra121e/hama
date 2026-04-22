@@ -32,7 +32,7 @@ export function Navbar() {
             HAMA
           </span>
           <span className="mt-1 text-[10px] font-medium tracking-[0.18em] text-muted-foreground sm:text-xs">
-            Happy Asset mapping Adviser
+            Happy Asset Mapping Adviser
           </span>
         </Link>
 
