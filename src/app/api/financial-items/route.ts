@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import type { FinancialItem } from "@/entities/financial-item";
 import {
 	FIXED_ROOT_FINANCIAL_ITEMS,
 	getDescendantIds,
@@ -22,14 +23,14 @@ const toFinancialItemPayload = (item: {
 	autoCalc: string;
 	rate: number | null;
 	sortOrder: number;
-}) => ({
+}): FinancialItem => ({
 	id: item.id,
 	profileId: item.profileId,
-	level: item.level,
+	level: item.level as "large" | "medium" | "small",
 	parentId: item.parentId,
 	name: item.name,
-	category: item.category,
-	autoCalc: item.autoCalc,
+	category: item.category as "income" | "expense" | "asset" | "liability",
+	autoCalc: item.autoCalc as "none" | "compound" | "depreciation" | "cashflow",
 	rate: item.rate,
 	sortOrder: item.sortOrder,
 });
@@ -85,7 +86,9 @@ const fetchItems = async (profileId: string) => {
 		orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
 	});
 
-	return sortFinancialItems(items).map(toFinancialItemPayload);
+	// Cast database objects to FinancialItem type for type safety
+	const typedItems = items as FinancialItem[];
+	return sortFinancialItems(typedItems).map(toFinancialItemPayload);
 };
 
 export async function GET(request: Request) {
@@ -121,7 +124,7 @@ export async function POST(request: Request) {
 		const siblingItems = await prisma.financialItem.findMany({
 			where: { profileId: body.profileId, parentId: body.parentId },
 		});
-		const nextSortOrder = getNextSortOrder(siblingItems, body.parentId);
+		const nextSortOrder = getNextSortOrder(siblingItems as FinancialItem[], body.parentId);
 
 		const created = await prisma.financialItem.create({
 			data: {
@@ -204,7 +207,7 @@ export async function DELETE(request: Request) {
 		}
 
 		const allItems = await prisma.financialItem.findMany({ where: { profileId: body.profileId } });
-		const descendantIds = getDescendantIds(allItems, target.id);
+		const descendantIds = getDescendantIds(allItems as FinancialItem[], target.id);
 
 		await prisma.$transaction(async (tx) => {
 			if (descendantIds.length > 0) {

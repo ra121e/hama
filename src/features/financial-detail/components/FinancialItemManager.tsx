@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
 	Dialog,
-	DialogClose,
 	DialogContent,
 	DialogDescription,
 	DialogFooter,
@@ -330,11 +329,9 @@ export function FinancialItemManager() {
 						{actionError ? <p className="text-sm text-destructive">{actionError}</p> : null}
 					</div>
 					<DialogFooter>
-						<DialogClose asChild>
-							<Button type="button" variant="outline" disabled={isSubmitting} onClick={closeDialog}>
-								キャンセル
-							</Button>
-						</DialogClose>
+						<Button type="button" variant="outline" disabled={isSubmitting} onClick={closeDialog}>
+							キャンセル
+						</Button>
 						<Button type="button" onClick={() => void handleSubmitDialog()} disabled={isSubmitting || draftName.trim() === ""}>
 							{isSubmitting ? "保存中..." : "保存"}
 						</Button>
@@ -352,11 +349,9 @@ export function FinancialItemManager() {
 					</DialogHeader>
 					{actionError ? <p className="text-sm text-destructive">{actionError}</p> : null}
 					<DialogFooter>
-						<DialogClose asChild>
-							<Button type="button" variant="outline" disabled={isSubmitting} onClick={() => setDeleteTarget(null)}>
-								キャンセル
-							</Button>
-						</DialogClose>
+						<Button type="button" variant="outline" disabled={isSubmitting} onClick={() => setDeleteTarget(null)}>
+							キャンセル
+						</Button>
 						<Button type="button" variant="destructive" onClick={() => void handleDelete()} disabled={isSubmitting}>
 							{isSubmitting ? "削除中..." : "削除する"}
 						</Button>

@@ -1,33 +1,49 @@
+"use client";
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { FinancialItemManager } from "@/features/financial-detail/components/FinancialItemManager";
-
-export const metadata = {
-  title: "詳細財務入力",
-};
+import { FinancialSpreadsheet } from "@/features/financial-detail/components/FinancialSpreadsheet";
+import { useScenarioStore } from "@/store/scenarioStore";
 
 export default function DetailInputPage() {
+  const selectedScenarioId = useScenarioStore((state) => state.selectedScenarioId);
+
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 py-10 sm:px-8">
+    <main className="mx-auto flex w-full flex-col gap-6 px-6 py-10 sm:px-8">
       <header className="space-y-2">
         <h1 className="text-3xl font-semibold tracking-tight">詳細財務入力</h1>
         <p className="text-sm text-muted-foreground">
-          Phase F：階層型財務項目を管理し、F03以降のスプレッドシート入力に接続します。
+          Phase F：階層型財務項目と月次・年次エントリを一元管理するスプレッドシートUIです。
         </p>
       </header>
 
-      <FinancialItemManager />
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        {/* 左パネル：項目管理 */}
+        <Card className="lg:col-span-1 h-fit">
+          <CardHeader>
+            <CardTitle className="text-lg">財務項目</CardTitle>
+            <CardDescription>項目を追加・編集・削除</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <FinancialItemManager />
+          </CardContent>
+        </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>スプレッドシート入力領域</CardTitle>
-          <CardDescription>将来的に月次・年次の詳細入力を配置します。</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="rounded-2xl border border-dashed border-border bg-muted/20 p-8 text-sm text-muted-foreground">
-            スプレッドシート入力エリア（F03で実装）
-          </div>
-        </CardContent>
-      </Card>
+        {/* 右パネル：スプレッドシート */}
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle className="text-lg">月次・年次入力</CardTitle>
+            <CardDescription>
+              直近36ヶ月は月次入力、37ヶ月以降は年次入力に対応
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-auto">
+              <FinancialSpreadsheet scenarioId={selectedScenarioId} />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </main>
   );
 }
