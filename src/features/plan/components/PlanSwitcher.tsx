@@ -94,7 +94,7 @@ export function PlanSwitcher({ className }: PlanSwitcherProps) {
         <div className="flex flex-wrap items-center gap-2">
           <Input
             id="new-plan-name"
-            placeholder="例: 住宅購入プラン"
+            placeholder="例: 子ども2人私立大学"
             value={newPlanName}
             onChange={(event) => setNewPlanName(event.target.value)}
             className="min-w-[220px] flex-1"

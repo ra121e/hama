@@ -229,7 +229,7 @@ const deriveInputValues = (
   return { financial, happiness, happinessMemo };
 };
 
-const fetchProfileBundle = async () => {
+const fetchProfileBundle = async (preferredScenarioId?: string) => {
   let profile = await prisma.profile.findFirst({
     orderBy: { createdAt: "asc" },
     include: {
@@ -284,7 +284,11 @@ const fetchProfileBundle = async () => {
   }
 
   const activeScenario =
-    profile.scenarios.find((scenario) => scenario.isDefault) ?? profile.scenarios[0];
+    (preferredScenarioId
+      ? profile.scenarios.find((scenario) => scenario.id === preferredScenarioId)
+      : undefined) ??
+    profile.scenarios.find((scenario) => scenario.isDefault) ??
+    profile.scenarios[0];
 
   const derived = deriveInputValues(activeScenario?.snapshots ?? []);
 
@@ -331,8 +335,8 @@ const saveProfile = async (request: Request) => {
   }
 
   const scenarioId = body.scenarioId ?? DEFAULT_SCENARIO_ID;
-  const scenarioName = body.scenarioName ?? DEFAULT_SCENARIO_NAME;
-  const scenarioType = body.scenarioType ?? "base";
+  const scenarioName = body.scenarioName?.trim();
+  const scenarioType = body.scenarioType;
   const timepoint = body.timepoint ?? "now";
 
   await prisma.$transaction(async (tx) => {
@@ -376,21 +380,26 @@ const saveProfile = async (request: Request) => {
       },
     });
 
-    const scenario = await tx.scenario.upsert({
-      where: { id: scenarioId },
-      update: {
-        name: scenarioName,
-        type: scenarioType,
-        profileId: profile.id,
-      },
-      create: {
-        id: scenarioId,
-        profileId: profile.id,
-        name: scenarioName,
-        type: scenarioType,
-        isDefault: scenarioId === DEFAULT_SCENARIO_ID,
-      },
-    });
+    const existingScenario = await tx.scenario.findUnique({ where: { id: scenarioId } });
+
+    const scenario = existingScenario
+      ? await tx.scenario.update({
+          where: { id: scenarioId },
+          data: {
+            profileId: profile.id,
+            ...(scenarioName ? { name: scenarioName } : {}),
+            ...(scenarioType ? { type: scenarioType } : {}),
+          },
+        })
+      : await tx.scenario.create({
+          data: {
+            id: scenarioId,
+            profileId: profile.id,
+            name: scenarioName ?? DEFAULT_SCENARIO_NAME,
+            type: scenarioType ?? (scenarioId === DEFAULT_SCENARIO_ID ? "base" : "custom"),
+            isDefault: scenarioId === DEFAULT_SCENARIO_ID,
+          },
+        });
 
     await tx.snapshot.deleteMany({
       where: {
@@ -410,7 +419,7 @@ const saveProfile = async (request: Request) => {
     });
   });
 
-  return Response.json(await fetchProfileBundle());
+  return Response.json(await fetchProfileBundle(scenarioId));
 };
 
 export async function GET() {
