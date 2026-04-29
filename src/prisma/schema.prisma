@@ -15,6 +15,7 @@ model Profile {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   scenarios Scenario[]
+  financialItems FinancialItem[]
   settings  Settings?
 }
 
@@ -27,6 +28,7 @@ model Scenario {
   profile   Profile    @relation(fields: [profileId], references: [id], onDelete: Cascade)
   profileId String
   snapshots Snapshot[]
+  financialEntries FinancialEntry[]
 }
 
 model Snapshot {
@@ -38,6 +40,36 @@ model Snapshot {
   memo       String?
   scenario   Scenario @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
   scenarioId String
+}
+
+model FinancialItem {
+  id        String    @id @default(uuid())
+  profileId String
+  profile   Profile   @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  level     String
+  parentId  String?
+  parent    FinancialItem? @relation("FinancialItemHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children  FinancialItem[] @relation("FinancialItemHierarchy")
+  name      String
+  category  String
+  autoCalc  String    @default("none")
+  rate      Float?
+  sortOrder Int       @default(0)
+  entries   FinancialEntry[]
+}
+
+model FinancialEntry {
+  id         String        @id @default(uuid())
+  scenarioId String
+  scenario   Scenario      @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+  itemId     String
+  item       FinancialItem  @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  yearMonth  String
+  value      Float
+  isExpanded Boolean       @default(false)
+  memo       String?
+
+  @@index([scenarioId, itemId, yearMonth])
 }
 
 model Settings {

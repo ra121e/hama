@@ -23,6 +23,7 @@ model Profile {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   scenarios Scenario[]
+  financialItems FinancialItem[]
   settings  Settings?
 }
 
@@ -36,6 +37,7 @@ model Scenario {
   profile   Profile    @relation(fields: [profileId], references: [id], onDelete: Cascade)
   profileId String
   snapshots Snapshot[]
+  financialEntries FinancialEntry[]
 }
 
 // スナップショット（シナリオ × 時点 × 項目の値）
@@ -48,6 +50,40 @@ model Snapshot {
   memo       String?
   scenario   Scenario @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
   scenarioId String
+}
+
+// 財務項目定義（階層構造：大項目固定・中小項目はユーザー追加可能）
+model FinancialItem {
+  id        String    @id @default(uuid())
+  profileId String
+  profile   Profile   @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  level     String    // large | medium | small
+  parentId  String?   // 親項目ID（大項目はnull）
+  parent    FinancialItem? @relation("FinancialItemHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children  FinancialItem[] @relation("FinancialItemHierarchy")
+  name      String    // "手取給与" "家賃" など
+  category  String    // income | expense | asset | liability
+  autoCalc  String    @default("none") // none | compound | depreciation | cashflow
+  rate      Float?    // 年利率・年減価率（autoCalcがnone以外の場合に使用）
+  sortOrder Int       @default(0)
+  entries   FinancialEntry[]
+}
+
+// 財務エントリ（常に月次単位で保存）
+// 直近36ヶ月：ユーザー入力値をそのまま保存
+// 37ヶ月以降：年次入力を12ヶ月に自動展開して保存
+model FinancialEntry {
+  id         String        @id @default(uuid())
+  scenarioId String
+  scenario   Scenario      @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+  itemId     String        // FinancialItem.id
+  item       FinancialItem  @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  yearMonth  String        // "2026-04" 形式（常に月次単位）
+  value      Float         // 月次の値（収入・支出は月額、資産・負債は月末残高）
+  isExpanded Boolean       @default(false) // 年次入力から自動展開された場合 true
+  memo       String?
+
+  @@index([scenarioId, itemId, yearMonth])
 }
 
 // 設定（プロファイル別）
