@@ -3,11 +3,13 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 describe("detail input page", () => {
-	it("exports the expected title and message", () => {
+	it("exports the expected title and section labels", () => {
 		const source = readFileSync(join(process.cwd(), "src", "app", "input", "detail", "page.tsx"), "utf8");
 
 		expect(source).toContain('title: "詳細財務入力"');
 		expect(source).toContain("詳細財務入力");
-		expect(source).toContain("Phase F：詳細財務入力ページ（開発中）");
+		expect(source).toContain("FinancialItemManager");
+		expect(source).toContain("詳細財務入力");
+		expect(source).toContain("スプレッドシート入力エリア（F03で実装）");
 	});
 });
