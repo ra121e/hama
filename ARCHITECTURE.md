@@ -1,8 +1,8 @@
 # ARCHITECTURE.md — HAMA 技術アーキテクチャ設計書
 
-**製品名**：HAMA（ハマ）— Happy Adviser Money Adviser  
-**バージョン**：MVP v1.0  
-**最終更新**：2026-03-31
+**製品名**：HAMA（ハマ）— Happy Adviser Money Adviser
+**バージョン**：MVP v1.0 / Phase F 設計含む
+**最終更新**：2026-04-29
 
 ---
 
@@ -16,11 +16,12 @@
 | グラフ | Apache ECharts 5.x | デュアル軸・複数シリーズ・レーダーを公式サポート |
 | 状態管理 | Zustand | 軽量・シンプル・Next.js App Routerと相性良好 |
 | バリデーション | Zod | スキーマ定義をフロント/バックエンドで共有 |
-| 認証 | **MVP：なし**／ 次フェーズ：Clerk（個人）／ その次：Clerk Organization（企業） | 段階的に追加。MVPでは認証不要 |
+| 認証 | **MVP：なし** → フェーズ2：Clerk（個人） → フェーズ3：Clerk Organization（企業） | 段階的に追加。MVPでは認証不要 |
 | DB | PostgreSQL | マルチユーザー対応・本番環境標準 |
 | ORM | Prisma | 直感的なスキーマ定義・マイグレーション自動化・Copilotとの相性◎ |
-| ホスティング | Vercel（アプリ）+ Railway（PostgreSQL） | ゼロコンフィグデプロイ・スケールアウト容易 |
-| コンテナ | Docker Compose | ローカル開発環境の統一（本番はVercel/Railwayに委ねる） |
+| グリッドUI（Phase F） | ag-Grid または TanStack Table | 仮想スクロール・階層行・大量月次データの表示に対応 |
+| ホスティング | EC2 t4g.small（ARM64）+ RDS PostgreSQL | コスト効率・ARM64 Graviton2で性能/コストバランス良好 |
+| コンテナ | Docker Compose（ARM64対応） | ローカル開発環境の統一 |
 | テスト | Vitest + Testing Library | 高速・Vite互換・shadcn UIと相性良好 |
 
 ---
@@ -35,76 +36,89 @@ hama/
 ├── Dockerfile
 ├── .env.example
 │
+├── prisma/
+│   └── schema.prisma               # DBスキーマ定義
+│
 ├── src/
 │   ├── app/                        # Next.js App Router
 │   │   ├── layout.tsx              # ルートレイアウト（Provider類ラップ）
-│   │   ├── page.tsx                # ダッシュボード（/）
+│   │   ├── page.tsx                # ダッシュボード（/）ハッピースコア入力のみ
 │   │   ├── input/
-│   │   │   └── page.tsx            # 入力フォーム（/input）
+│   │   │   ├── page.tsx            # 財務MVP入力（/input）4時点タブ切替
+│   │   │   └── detail/
+│   │   │       └── page.tsx        # 【Phase F】詳細財務入力（/input/detail）
 │   │   ├── scenario/
-│   │   │   └── page.tsx            # シナリオ管理（/scenario）
+│   │   │   └── page.tsx            # プラン管理（/scenario）
 │   │   ├── simulation/
-│   │   │   └── page.tsx            # What-Ifシミュレーション
+│   │   │   └── page.tsx            # What-Ifシミュレーション（/simulation）
 │   │   ├── report/
-│   │   │   └── page.tsx            # レポート出力
+│   │   │   └── page.tsx            # レポート出力（/report）
 │   │   ├── settings/
-│   │   │   └── page.tsx            # 設定画面
+│   │   │   └── page.tsx            # 設定画面（/settings）
 │   │   └── api/
+│   │       ├── health/
+│   │       │   └── route.ts        # DB疎通確認
 │   │       ├── profile/
 │   │       │   └── route.ts        # プロファイルCRUD
-│   │       └── scenario/
-│   │           └── route.ts        # シナリオCRUD
+│   │       ├── scenario/
+│   │       │   └── route.ts        # プランCRUD（DBモデル名はScenario）
+│   │       └── financial-entries/
+│   │           └── route.ts        # 【Phase F】FinancialEntry CRUD
 │   │
 │   ├── features/                   # ドメイン別機能モジュール
-│   │   ├── auth/                   # 【将来：フェーズ2で実装】認証関連（MVP時点は空ディレクトリ）
+│   │   ├── auth/                   # 【フェーズ2で実装】MVP時点は空ディレクトリ
 │   │   │   └── .gitkeep
-│   │   ├── financial/
+│   │   ├── financial/              # MVP財務入力（シンプル版）
 │   │   │   ├── components/         # FinancialInputForm等
 │   │   │   ├── hooks/              # useFinancialForm
-│   │   │   ├── schema.ts           # Zodスキーマ（財務）
+│   │   │   ├── schema.ts           # Zodスキーマ（財務MVP）
 │   │   │   └── types.ts
+│   │   ├── financial-detail/       # 【Phase F】詳細財務入力・MVP時点は空
+│   │   │   ├── components/         # SpreadsheetGrid・HierarchyRow等
+│   │   │   ├── hooks/              # useFinancialItems・useAutoCalc
+│   │   │   ├── engine/             # 複利・減価償却・CF自動計算ロジック
+│   │   │   ├── schema.ts           # Zodスキーマ（詳細財務）
+│   │   │   ├── types.ts
+│   │   │   └── .gitkeep
 │   │   ├── happiness/
 │   │   │   ├── components/         # HappinessSlider等
 │   │   │   ├── hooks/              # useHappinessForm
 │   │   │   ├── schema.ts           # Zodスキーマ（ハッピー）
 │   │   │   └── types.ts
-│   │   ├── scenario/
+│   │   ├── scenario/               # プラン管理（DBモデル名Scenarioに対応）
 │   │   │   ├── components/
 │   │   │   ├── hooks/
 │   │   │   └── types.ts
-│   │   ├── charts/
-│   │   │   ├── RadarChart.tsx      # レーダーチャート（ECharts）
-│   │   │   ├── DualAxisChart.tsx   # デュアル軸ラインチャート（ECharts）
-│   │   │   └── HamaScore.tsx       # スコアメーター表示
-│   │   └── auth/                   # 【フェーズ2で実装】認証関連
-│   │       ├── components/         # SignInButton等（MVP時点では空ディレクトリ）
-│   │       └── hooks/              # useCurrentUser等
+│   │   └── charts/
+│   │       ├── RadarChart.tsx      # レーダーチャート（ECharts）
+│   │       ├── DualAxisChart.tsx   # デュアル軸ラインチャート（ECharts）
+│   │       └── HamaScore.tsx       # スコアメーター表示
 │   │
-│   ├── entities/                   # データエンティティ
-│   │   ├── profile.ts              # プロファイル型定義
-│   │   └── scenario.ts             # シナリオ型定義
-│   │
-│   ├── prisma/                     # Prisma関連（srcの外に置くことも可）
-│   │   └── schema.prisma           # DBスキーマ定義
+│   ├── entities/                   # データエンティティ型定義
+│   │   ├── profile.ts
+│   │   ├── scenario.ts             # Plan型のエイリアスも定義
+│   │   └── financial-item.ts       # 【Phase F】FinancialItem型定義
 │   │
 │   ├── shared/                     # 共有ユーティリティ
-│   │   ├── components/             # Button, Card, Modal等（shadcn/ui再エクスポート）
-│   │   ├── hooks/                  # useDebounce, useLocalStorage等
+│   │   ├── components/             # shadcn/ui再エクスポート
+│   │   ├── hooks/                  # useDebounce等
 │   │   ├── lib/
-│   │   │   ├── hama-score.ts       # HAMAスコア計算ロジック
-│   │   │   ├── normalizer.ts       # 財務値の正規化ユーティリティ
-│   │   │   └── formatter.ts        # 通貨フォーマット（万円表示等）
+│   │   │   ├── hama-score.ts           # HAMAスコア計算ロジック
+│   │   │   ├── normalizer.ts           # 財務値の正規化ユーティリティ
+│   │   │   ├── formatter.ts            # 通貨フォーマット（万円表示等）
+│   │   │   └── financial-aggregator.ts # 【Phase F】月次→集約ロジック（表示時動的計算）
 │   │   └── config/
-│   │       └── categories.ts       # カテゴリ・項目定義（設定駆動）
+│   │       └── categories.ts           # カテゴリ・項目定義（設定駆動）
 │   │
 │   └── store/                      # Zustand ストア
-│       ├── profileStore.ts         # 現在のプロファイル状態
-│       ├── scenarioStore.ts        # シナリオ一覧・選択状態
+│       ├── profileStore.ts         # プロファイル状態
+│       ├── scenarioStore.ts        # プラン一覧・選択状態
 │       └── uiStore.ts              # UI状態（チャート設定等）
 │
 ├── tests/
 │   ├── unit/
-│   │   └── hama-score.test.ts
+│   │   ├── hama-score.test.ts
+│   │   └── financial-aggregator.test.ts  # 【Phase F】集約ロジックのテスト
 │   └── integration/
 │       └── api.test.ts
 │
@@ -121,23 +135,48 @@ hama/
 ## 3. データフロー
 
 ```
-ユーザー入力
-    │
-    ▼
-Zodバリデーション（features/financial・happiness/schema.ts）
-    │
-    ▼
-Zustand Store（store/profileStore.ts）
-    │
-    ├──► HAMAスコア計算（shared/lib/hama-score.ts）
-    │         │
-    │         ▼
-    │    スコア表示（features/charts/HamaScore.tsx）
-    │
-    └──► EChartsデータ変換
-              │
-              ├──► RadarChart.tsx（ハッピー軸レーダー）
-              └──► DualAxisChart.tsx（財務 左Y軸 / HAMAスコア 右Y軸）
+【ダッシュボード（/）— ハッピースコアのみ】
+  スライダー入力
+      │
+      ▼
+  Zodバリデーション（features/happiness/schema.ts）
+      │
+      ▼
+  Zustand Store（profileStore）→ DB保存（Snapshot）
+      │
+      ├──► HAMAスコア計算（hama-score.ts） → HamaScore.tsx
+      └──► RadarChart.tsx（ハッピー軸レーダー・リアルタイム更新）
+
+【入力ページ（/input）— 財務MVP】
+  財務3項目 × 4時点のテキスト入力
+      │
+      ▼
+  Zodバリデーション（features/financial/schema.ts）
+      │
+      ▼
+  Zustand Store → DB保存（Snapshot: timepoint × itemId）
+      │
+      └──► DualAxisChart.tsx（財務 左Y軸 / ハッピー各項目・HAMAスコア 右Y軸）
+
+【詳細財務入力ページ（/input/detail）— Phase F】
+  スプレッドシート型UI
+    ├── 直近36ヶ月：月次入力
+    └── 37ヶ月以降：年次入力 → 12ヶ月自動展開
+      │
+      ▼
+  自動計算エンジン（features/financial-detail/engine/）
+    ├── 複利計算（月次利率 = 年利率 ÷ 12）
+    ├── 減価償却（建物のみ・土地不変）
+    └── CF自動生成（資産収益 → 収入欄へ反映）
+      │
+      ▼
+  DB保存（FinancialEntry: yearMonth × itemId、常に月次単位）
+      │
+      ▼
+  financial-aggregator.ts（表示リクエスト時に動的集約）
+    ├── 月次集計  → 詳細グラフ用
+    ├── 年次集計  → 推移グラフ用
+    └── 4時点集計 → ダッシュボードの DualAxisChart へ反映
 ```
 
 ---
@@ -154,8 +193,7 @@ MVP          認証なし。Profileを直接作成・操作（単一ユーザー
 フェーズ3    企業向け拡張（Organizationモデル追加）※実装計画外
 ```
 
-スキーマはMVP時点からフェーズ2への移行コストが最小になるよう設計する。
-`userId` フィールドはMVPでは `nullable` にしておき、認証追加時に `required` に変更する。
+`userId` フィールドはMVPでは `nullable` にしておき、フェーズ2移行時に `required` に変更する。
 
 ```prisma
 // prisma/schema.prisma
@@ -174,31 +212,31 @@ generator client {
 // ========================================
 
 // プロファイル（人生計画1件）
-// userId は MVP では null、フェーズ2で Clerk の userId を格納
 model Profile {
-  id        String    @id @default(uuid())
+  id        String     @id @default(uuid())
   name      String
-  currency  String    @default("JPY")
-  userId    String?   // nullable → フェーズ2で String @unique に変更
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  currency  String     @default("JPY")
+  userId    String?    // nullable → フェーズ2で String @unique に変更
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
   scenarios Scenario[]
   settings  Settings?
 }
 
-// シナリオ（プロファイル配下）
+// プラン（UX上は「名前付きプラン」。DBモデル名は Scenario のまま維持）
+// 例：「現状維持プラン」「転職プラン」「早期リタイアプラン」
 model Scenario {
   id        String     @id @default(uuid())
-  name      String
-  type      String     // base | optimistic | pessimistic | custom
-  isDefault Boolean    @default(false)
+  name      String     // ユーザーが自由に命名
+  type      String     // default | custom （楽観/悲観は廃止）
+  isDefault Boolean    @default(false)  // デフォルトプランは削除不可
   createdAt DateTime   @default(now())
   profile   Profile    @relation(fields: [profileId], references: [id], onDelete: Cascade)
   profileId String
   snapshots Snapshot[]
 }
 
-// スナップショット（シナリオ × 時点 × 項目の値）
+// スナップショット（MVP財務・ハッピー入力値を4時点で保存）
 model Snapshot {
   id         String   @id @default(uuid())
   timepoint  String   // now | 5y | 10y | 20y
@@ -215,10 +253,42 @@ model Settings {
   weightHappiness Float   @default(0.7)
   weightFinance   Float   @default(0.3)
   targetAssets    Float?
-  displayUnit     String  @default("man") // 円 | 万円
+  displayUnit     String  @default("man")  // 円 | 万円
   profile         Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
   profileId       String  @id
 }
+
+// ========================================
+// Phase F以降（詳細財務入力追加時に有効化）
+// ========================================
+
+// 財務項目定義（階層構造：大項目固定・中小項目はユーザー追加可能）
+// model FinancialItem {
+//   id         String   @id @default(uuid())
+//   profileId  String
+//   profile    Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+//   level      String   // large | medium | small
+//   parentId   String?  // 親項目ID（大項目はnull）
+//   name       String   // "手取給与" "家賃" など
+//   category   String   // income | expense | asset | liability
+//   autoCalc   String   @default("none")  // none | compound | depreciation | cashflow
+//   rate       Float?   // 年利率・年減価率（autoCalcがnone以外の場合に使用）
+//   sortOrder  Int      @default(0)
+// }
+
+// 財務エントリ（常に月次単位で保存）
+// 直近36ヶ月：ユーザー入力値をそのまま保存
+// 37ヶ月以降：年次入力を12ヶ月に自動展開して保存
+// model FinancialEntry {
+//   id         String   @id @default(uuid())
+//   scenarioId String
+//   scenario   Scenario @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+//   itemId     String   // FinancialItem.id
+//   yearMonth  String   // "2026-04" 形式（常に月次単位）
+//   value      Float    // 月次の値（収入・支出は月額、資産・負債は月末残高）
+//   isExpanded Boolean  @default(false)  // 年次入力から自動展開された場合 true
+//   memo       String?
+// }
 
 // ========================================
 // フェーズ2以降（認証追加時に有効化）
@@ -251,7 +321,9 @@ model Settings {
 [フェーズ3] Organization（企業）
                └── [フェーズ2] User（個人）
                                  └── [MVP] Profile（人生計画）
-                                              └── Scenario → Snapshot
+                                              └── Scenario（プラン）
+                                                    ├── Snapshot（MVP財務・ハッピー）
+                                                    └── [Phase F] FinancialEntry（月次財務）
 ```
 
 **主要コマンド：**
@@ -276,7 +348,7 @@ function calcFinanceScore(financial: FinancialData, settings: Settings): number 
   const cashflowRatio = Math.max(0, (financial.income - financial.expense) / financial.income) * 100
   const assetRatio = settings.targetAssets > 0
     ? Math.min(100, (financial.assets / settings.targetAssets) * 100)
-    : 50 // 目標未設定時はニュートラル値
+    : 50  // 目標未設定時はニュートラル値
   return (cashflowRatio + assetRatio) / 2
 }
 
@@ -300,61 +372,116 @@ export function calcHamaScore(data: SnapshotData, settings: Settings): number {
 
 ---
 
-## 6. EChartsグラフ設定方針
+## 6. Phase F：financial-aggregator.ts 設計
 
-### 6.1 レーダーチャート
-```typescript
-// indicator にハッピー4項目を設定（max: 100）
-// 財務軸を追加する場合は "正規化した値（0〜100）" で別 indicator として追加
-// 複数シナリオ = seriesData を複数設定し、異なる color + opacity で重ねる
-```
+集約は「保存時」ではなく**「表示リクエスト時」に動的に行う**。
 
-### 6.2 デュアル軸ラインチャート
 ```typescript
-// yAxis: [
-//   { type: 'value', name: '金額（万円）', position: 'left' },         // 左軸：財務
-//   { type: 'value', name: 'スコア', min: 0, max: 100, position: 'right' }  // 右軸：ハッピー各項目・HAMAスコア
-// ]
-//
-// 右軸に表示する系列（yAxisIndex: 1）：
-//   - ハッピー4項目（時間バランス・健康・人間関係・自己実現）を個別の面グラフで表示（デフォルト）
-//   - HAMAスコアを折れ線グラフで表示
-//
-// 透過度制御：
-//   - 各系列の areaStyle.opacity と lineStyle.opacity をUIスライダーと連動
-//   - デフォルトは各項目 opacity: 0.3（面）/ 0.8（線）、HAMAスコア opacity: 1.0
-//
-// 凡例クリック：EChartsのlegendSelectChanged イベントで表示／非表示をトグル
-//
-// 財務系 series は yAxisIndex: 0、スコア系 series は yAxisIndex: 1 を指定
+// shared/lib/financial-aggregator.ts
+
+type AggregateTarget = 'now' | '5y' | '10y' | '20y'
+type AggregateType   = 'balance' | 'flow'  // 残高系 | フロー系
+
+/**
+ * 月次エントリから指定時点の値を集約する
+ * - balance（資産・負債）：指定月末の残高
+ * - flow（収入・支出）   ：指定年の12ヶ月合計
+ */
+export function aggregateToTimepoint(
+  entries: FinancialEntry[],
+  target: AggregateTarget,
+  type: AggregateType,
+  baseDate: Date
+): number { ... }
+
+/**
+ * 月次エントリを年次に集約する（グラフ用）
+ */
+export function aggregateToYearly(
+  entries: FinancialEntry[],
+  type: AggregateType
+): Record<string, number> { ... }
+
+/**
+ * 月次エントリをそのまま返す（直近36ヶ月グラフ用）
+ */
+export function getMonthlyEntries(
+  entries: FinancialEntry[],
+  months: number = 36
+): FinancialEntry[] { ... }
 ```
 
 ---
 
-## 7. Docker Compose 構成
+## 7. EChartsグラフ設定方針
 
-Docker Composeは**ローカル開発専用**（本番はVercel + Railwayに委ねる）。
+### 7.1 レーダーチャート
+```typescript
+// indicator にハッピー4項目を設定（max: 100）
+// 財務軸を追加する場合は正規化した値（0〜100）で別 indicator として追加
+// 選択中の1プランのデータのみを seriesData に設定（グラフオーバーレイは行わない）
+// 時点切替（現在/5年後/10年後/20年後）は series.data を差し替えてアニメーション遷移
+```
+
+### 7.2 デュアル軸ラインチャート
+```typescript
+// yAxis: [
+//   { type: 'value', name: '金額（万円）', position: 'left' },
+//   { type: 'value', name: 'スコア', min: 0, max: 100, position: 'right' }
+// ]
+//
+// 右軸の系列（yAxisIndex: 1）：
+//   - ハッピー4項目を個別の面グラフで表示（デフォルト）
+//   - HAMAスコアを折れ線グラフで表示
+//
+// 透過度制御：areaStyle.opacity と lineStyle.opacity をUIスライダーと連動
+//   - デフォルト: 各項目 opacity 0.3（面）/ 0.8（線）、HAMAスコア 1.0
+//
+// 財務系 series は yAxisIndex: 0、スコア系 series は yAxisIndex: 1
+//
+// Phase F完了後：X軸を月次に拡張し financial-aggregator.ts の集約値を使用
+```
+
+---
+
+## 8. Docker Compose 構成（EC2 t4g.small / ARM64対応）
+
+本番環境は **AWS EC2 t4g.small（Graviton2 / ARM64）** を使用する。
+Docker設定はすべて **linux/arm64** ネイティブで動作するように構成する。
+
+### 8.1 docker-compose.yml
 
 ```yaml
 # docker-compose.yml
 version: '3.9'
 services:
   app:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
+      platforms:
+        - linux/arm64      # t4g.small（Graviton2/ARM64）向け
+    platform: linux/arm64
     ports:
       - "3000:3000"
     environment:
       - DATABASE_URL=postgresql://hama:hama@db:5432/hama
-      - NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
-      - CLERK_SECRET_KEY=${CLERK_SECRET_KEY}
+      - NEXT_PUBLIC_APP_NAME=HAMA
+      - NEXT_PUBLIC_DEFAULT_CURRENCY=JPY
+      # ── フェーズ2（個人向け認証）追加時に有効化 ──
+      # - NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
+      # - CLERK_SECRET_KEY=${CLERK_SECRET_KEY}
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     volumes:
       - .:/app
       - /app/node_modules
+      - /app/.next
 
   db:
-    image: postgres:16-alpine
+    image: postgres:16-alpine          # Alpine は ARM64 マルチアーキ対応済み
+    platform: linux/arm64
     environment:
       POSTGRES_USER: hama
       POSTGRES_PASSWORD: hama
@@ -363,21 +490,70 @@ services:
       - "5432:5432"
     volumes:
       - hama_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hama"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
 volumes:
   hama_pgdata:
 ```
 
-> **起動コマンド**：`docker compose up` — アプリ + PostgreSQL が同時起動。
+### 8.2 Dockerfile
+
+```dockerfile
+# Dockerfile
+# node:20-alpine は linux/arm64（Graviton2）対応済み
+FROM node:20-alpine AS base
+
+WORKDIR /app
+
+# 依存関係インストール（キャッシュ最適化）
+FROM base AS deps
+COPY package*.json ./
+RUN npm ci
+
+# ビルドステージ
+FROM base AS builder
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+RUN npm run build
+
+# 本番ランタイム
+FROM base AS runner
+ENV NODE_ENV=production
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+COPY --from=builder /app/public ./public
+
+EXPOSE 3000
+CMD ["node", "server.js"]
+```
+
+> **ローカルでのARM64ビルド注意**：
+> macOS（Apple Silicon）では `docker buildx build --platform linux/arm64` で正しくビルドできる。
+> Intel Mac / Windows では `--platform linux/arm64` 指定時にエミュレーション（遅い）が走るが、CI/CD（GitHub Actions + arm64 runner）で対処することを推奨する。
+
+### 8.3 EC2 t4g.small 運用メモ
+
+| 項目 | 内容 |
+|---|---|
+| インスタンスタイプ | t4g.small（2vCPU / 2GB RAM / Graviton2） |
+| アーキテクチャ | ARM64（linux/arm64） |
+| OS | Amazon Linux 2023 または Ubuntu 22.04 ARM |
+| Docker | Docker Engine 24.x + Compose V2 |
+| PostgreSQL | RDS for PostgreSQL（本番）/ コンテナ内（開発） |
+| ポート | 3000（アプリ）/ 5432（PostgreSQL） |
 
 ---
 
-## 8. 環境変数
+## 9. 環境変数
 
 ```bash
 # .env.example
 
-# PostgreSQL（ローカル開発）
+# PostgreSQL
 DATABASE_URL=postgresql://hama:hama@localhost:5432/hama
 
 # アプリ設定
@@ -393,89 +569,62 @@ NEXT_PUBLIC_DEFAULT_CURRENCY=JPY
 
 ---
 
-## 9. 拡張性設計指針
+## 10. 拡張性設計指針
 
-### 9.1 カテゴリ・項目の追加
-`shared/config/categories.ts` に JSON定義を追加するだけで、入力フォーム・チャート・スコア計算に自動反映される設定駆動設計とする。
+### 10.1 カテゴリ・項目の追加
+`shared/config/categories.ts` に定義を追加するだけで入力フォーム・チャート・スコア計算に自動反映される設定駆動設計。
 
 ```typescript
-// shared/config/categories.ts の構造例
 export const CATEGORIES = {
   happiness: [
-    { id: 'hap_time',     label: '時間バランス', type: 'slider', min: 0, max: 100 },
-    { id: 'hap_health',   label: '健康',         type: 'slider', min: 0, max: 100 },
+    { id: 'hap_time',    label: '時間バランス', type: 'slider', min: 0, max: 100 },
+    { id: 'hap_health',  label: '健康',         type: 'slider', min: 0, max: 100 },
     // ← ここに追加するだけでUI・チャートに反映
   ],
   financial: [
-    { id: 'fin_assets',   label: '総資産',   type: 'currency', unit: 'JPY' },
-    // ← 同様に追加可能
+    { id: 'fin_assets',  label: '総資産', type: 'currency', unit: 'JPY' },
   ]
 }
 ```
 
-### 9.2 ホスティング構成
-
-```
-┌──────────────────┐     ┌──────────────────┐
-│   Vercel         │     │   Railway        │
-│   （Next.jsアプリ）│────▶│   （PostgreSQL）  │
-└──────────────────┘     └──────────────────┘
-```
-
-- **Vercel**：Next.jsのゼロコンフィグデプロイ。`git push` でCI/CD自動化
-- **Railway**：PostgreSQLをマネージドで提供。`DATABASE_URL` を環境変数に設定するだけ
-- 認証SaaS（Clerk等）はフェーズ2以降で追加
-
-### 9.3 認証ロードマップ
+### 10.2 認証ロードマップ
 
 | フェーズ | 認証状態 | 対応内容 |
 |---|---|---|
-| **MVP** | **認証なし** | 単一ユーザー想定。ProfileのuserId は null |
-| **フェーズ2** | 個人向け認証 | Clerk導入。middleware.tsでルート保護。userId をProfileに紐付け |
-| **フェーズ3** | 企業向け拡張 | Clerk Organization。Organizationモデル追加。SSO対応 ※計画外 |
+| **MVP** | **認証なし** | 単一ユーザー想定。Profile.userId は null |
+| **フェーズ2** | 個人向け認証 | Clerk導入。middleware.ts でルート保護。userId を Profile に紐付け |
+| **フェーズ3** | 企業向け拡張 | Clerk Organization。Organization モデル追加。SSO対応 ※計画外 |
 
-フェーズ2移行時の変更は最小化するよう設計済み：
+フェーズ2移行時の変更コストは最小化済み：
 - `Profile.userId` を `nullable → required` に変更
 - `middleware.ts` を追加
 - `features/auth/` を実装（ディレクトリはMVP時点で作成済み）
 
-### 9.4 フロントエンドサーバーは不要
-Next.js 15 App Router が画面（React）と API（API Routes）を1プロセスで統合している。
-別途 Express・FastAPI などのサーバーを立てる必要はなく、Vercelへのデプロイ1つで完結する。
+### 10.3 フロントエンドサーバーは不要
+Next.js 15 App Router が画面（React）と API（API Routes）を1プロセスで統合。
+別途 Express・FastAPI などのサーバーを立てる必要はなく、EC2の1コンテナで完結する。
 
-```
-Next.js（Vercelで動作）
-  ├── App Router ── 画面・UI（React Server Components）
-  └── API Routes ── データ取得・保存エンドポイント
-          ↓
-      Prisma ORM
-          ↓
-    PostgreSQL（Railway）
-```
-
-### 9.5 将来のAI連携（Claude API）
+### 10.4 将来のAI連携（Claude API）
 - `app/api/advice/route.ts` を追加し、スナップショットデータをコンテキストとして Claude API に送信
 - アドバイス結果をダッシュボードのサイドパネルに表示
 
 ---
 
-## 10. 開発スライス計画
+## 11. 開発スライス計画
 
 ### 設計思想
-- **1スライス = 動く最小単位**。スライス完了時点でアプリが実際に動作すること
+- **1スライス = 動く最小単位**。完了時点でアプリが実際に動作すること
 - スライスをまたいで壊れた状態を作らない（常にmainブランチは動く）
 - 各スライス完了後に **git commit** で記録する
-- Copilotへの指示は **1スライスずつ** 行う（複数スライスをまとめて依頼しない）
-
----
+- Copilotへの指示は **1スライスずつ** 行う
 
 ### git 運用ルール
 
 ```bash
-# スライス開始時：作業ブランチを切る
+# スライス開始時
 git checkout -b slice/S01-project-skeleton
 
-# スライス完了時：コミットしてmainにマージ
+# スライス完了時
 git add .
 git commit -m "S01: プロジェクト骨格・Docker環境構築"
 git checkout main
@@ -488,51 +637,52 @@ git merge slice/S01-project-skeleton
 
 ### スライス一覧
 
-#### 🏗️ Phase A：骨格（動く空箱を作る）
+#### 🏗️ Phase A：骨格
 
 | スライス | 内容 | 完了条件 | gitタグ |
 |---|---|---|---|
-| **S01** | Next.js 15初期化・TypeScript・Tailwind・Docker Compose設定（PostgreSQL含む） | `docker compose up` でHello画面が表示される | `S01` |
-| **S02** | shadcn/ui導入・グローバルレイアウト・ナビゲーションバー | 全6画面にルーティングで遷移できる（中身は空） | `S02` |
+| **S01** | Next.js 15初期化・TypeScript・Tailwind・Docker Compose（ARM64対応）設定 | `docker compose up` でHello画面が表示される | `S01` |
+| **S02** | shadcn/ui導入・グローバルレイアウト・ナビゲーションバー | 全7画面にルーティングで遷移できる（中身は空） | `S02` |
 | **S03** | Prisma導入・PostgreSQL接続・DBスキーマ作成・マイグレーション実行 | `/api/health` がDB接続OKを返す | `S03` |
 
 ---
 
-#### 📝 Phase B：入力（データを受け取れるようにする）
+#### 📝 Phase B：入力
 
 | スライス | 内容 | 完了条件 | gitタグ |
 |---|---|---|---|
 | **S04** | Zustandストア設計（profileStore・scenarioStore） | ストアの型定義と初期値が揃っている | `S04` |
-| **S05** | ハッピースコア入力UI（スライダー4項目） + Zodバリデーション | スライダーを動かすと値がストアに反映される | `S05` |
-| **S06** | 財務入力UI（総資産・収入・支出）+ 万円表示切替 | 数値入力でストアに保存・バリデーションが動く | `S06` |
+| **S05** | ハッピースコア入力UI（スライダー4項目）＋ Zodバリデーション | スライダーを動かすと値がストアに反映される | `S05` |
+| **S06** | 財務入力UI（総資産・収入・支出）＋ 万円表示切替 | 数値入力でストアに保存・バリデーションが動く | `S06` |
 | **S07** | 入力値をDB（Snapshot）に保存・ページリロードで復元 | リロード後も入力値がDBから復元される | `S07` |
 
 ---
 
-#### 📊 Phase C：可視化（データをグラフに映す）
+#### 📊 Phase C：可視化
 
 | スライス | 内容 | 完了条件 | gitタグ |
 |---|---|---|---|
 | **S08** | Apache ECharts導入・レーダーチャート（ハードコード値で表示） | チャートが画面に描画される | `S08` |
 | **S09** | レーダーチャートをストアのハッピー入力値に接続 | スライダーを動かすとチャートがリアルタイム更新される | `S09` |
 | **S10** | HAMAスコア計算ロジック実装・スコア数値表示 | 入力値変化でスコアが計算・表示される | `S10` |
-| **S11** | デュアル軸ラインチャート（財務 左Y軸 / HAMAスコア 右Y軸） | 財務値とスコアが同一グラフに2軸で表示される | `S11` |
-| **S12** | ダッシュボード画面の統合（レーダー＋ラインチャート＋スコアを1画面に） | ダッシュボードが完成形のレイアウトで表示される | `S12` |
+| **S11** | デュアル軸ラインチャート（財務 左Y軸 / ハッピー各項目・HAMAスコア 右Y軸） | 2軸グラフが表示される | `S11` |
+| **S12** | ダッシュボード統合（レーダー＋ラインチャート＋スコアを1画面に） | ダッシュボードが完成形のレイアウトで表示される | `S12` |
 
 ---
 
-#### 🔁 Phase D：シナリオ（複数の未来を比較できるようにする）
+#### 🔁 Phase D：プラン管理
+> DBモデルは `Scenario` だが、UX上は「プラン」として扱う。グラフオーバーレイは行わない。
 
 | スライス | 内容 | 完了条件 | gitタグ |
 |---|---|---|---|
 | **S13** | 時間軸入力（現在・5年後・10年後・20年後）の入力フォーム追加 | 各時点の値を入力・保存できる | `S13` |
-| **S14** | シナリオCRUD（作成・名前変更・削除）UIとDB保存 | 複数シナリオを作成・切替できる | `S14` |
-| **S15** | 複数シナリオのチャートオーバーレイ表示 | レーダー・ラインチャートに複数シナリオが重なって表示される | `S15` |
+| **S14** | プランCRUD（作成・名前変更・削除）UIとDB保存 | 複数プランを作成・切替できる | `S14` |
+| **S15** | プラン管理画面にHAMAスコア一覧表示（バー表示） | 全プランのスコアを1画面で比較できる | `S15` |
 | **S16** | What-Ifシミュレーション画面（スライダーでリアルタイム影響確認） | 任意項目を動かしてスコア変化を即確認できる | `S16` |
 
 ---
 
-#### 🎁 Phase E：仕上げ（使いやすくする）
+#### 🎁 Phase E：仕上げ
 
 | スライス | 内容 | 完了条件 | gitタグ |
 |---|---|---|---|
@@ -540,6 +690,19 @@ git merge slice/S01-project-skeleton
 | **S18** | PDF・PNG エクスポート機能 | ボタン1つでレポートがダウンロードされる | `S18` |
 | **S19** | 設定画面（HAMAスコア加重値・目標資産額・表示単位） | 設定変更がスコアとグラフに即反映される | `S19` |
 | **S20** | UI磨き・レスポンシブ対応・ダークモード | スマホ・タブレット・PCで崩れなく表示される | `S20` |
+
+---
+
+#### 🏦 Phase F：詳細財務入力（MVPコア完成後）
+
+| スライス | 内容 | 完了条件 | gitタグ |
+|---|---|---|---|
+| **F01** | DBスキーマ拡張（`FinancialItem`・`FinancialEntry` 追加）・マイグレーション | `/input/detail` ページが空で表示される | `F01` |
+| **F02** | 階層型財務項目CRUD（大項目固定・中小項目の追加削除UI） | 項目を追加・削除・並び替えできる | `F02` |
+| **F03** | スプレッドシート型グリッドUI（月次36ヶ月列＋年次列）の表示と入力保存 | 月次・年次列に値を入力・`FinancialEntry` に保存できる | `F03` |
+| **F04** | 年次入力の月次自動展開ロジック実装 | 年次入力すると12ヶ月分の `FinancialEntry` が自動生成される | `F04` |
+| **F05** | 自動計算エンジン（複利・減価償却・CF自動生成）実装 | 利率を設定すると月次値が自動計算・保存される | `F05` |
+| **F06** | `financial-aggregator.ts` 実装（月次→4時点動的集約） | 詳細財務の値がダッシュボードのチャートに反映される | `F06` |
 
 ---
 
@@ -569,10 +732,10 @@ PRODUCT.md と ARCHITECTURE.md を参照してください。
 
 ### 変更してはいけないファイル
 - src/app/ 配下のルーティング
-- src/entities/db/schema.ts
+- prisma/schema.prisma
 ```
 
 ---
 
-*このドキュメントはClaude向けの実装指示書として使用すること。*  
+*このドキュメントはClaude向けの実装指示書として使用すること。*
 *実装開始時は必ず `PRODUCT.md` と本ドキュメントを両方コンテキストに含めること。*
