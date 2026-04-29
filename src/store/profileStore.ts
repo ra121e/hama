@@ -11,6 +11,7 @@ import {
 } from "@/entities/profile";
 import { calcHamaScoreFromProfile } from "@/shared/lib/hama-score";
 import type { Snapshot } from "@/entities/scenario";
+import type { PlanSummary } from "@/features/plan/types";
 
 type ScenarioSnapshotState = Partial<Record<Timepoint, Snapshot[]>>;
 
@@ -35,6 +36,8 @@ type ServerPayload = {
 	};
 	activeScenarioId: string;
 	snapshotsByScenario: Record<string, Record<string, Snapshot[]>>;
+	plans?: PlanSummary[];
+	scenarios?: PlanSummary[];
 };
 
 type ProfileStoreState = {
@@ -42,6 +45,7 @@ type ProfileStoreState = {
 	hamaScore: number;
 	activeScenarioId: string;
 	activeTimepoint: Timepoint;
+	plans: PlanSummary[];
 	snapshotsByScenario: Record<string, ScenarioSnapshotState>;
 	isHydrated: boolean;
 	isLoading: boolean;
@@ -49,7 +53,11 @@ type ProfileStoreState = {
 	lastSavedAt: string | null;
 	errorMessage: string | null;
 	setActiveScenario: (scenarioId: string) => void;
+	setActivePlan: (planId: string) => void;
 	setActiveTimepoint: (timepoint: Timepoint) => void;
+	createPlan: (name: string) => Promise<void>;
+	renamePlan: (planId: string, name: string) => Promise<void>;
+	deletePlan: (planId: string) => Promise<void>;
 	setProfileMeta: (patch: Partial<Pick<Profile, "id" | "name" | "userId">>) => void;
 	updateFinancial: (itemId: FinancialItemId, value: number) => void;
 	updateHappiness: (itemId: HappinessItemId, value: number, memo?: string) => void;
@@ -204,10 +212,22 @@ const normalizeSnapshots = (
 	return normalized;
 };
 
+const normalizePlans = (payload: ServerPayload): PlanSummary[] => {
+	const source = payload.plans ?? payload.scenarios ?? [];
+	return source.map((plan) => ({
+		id: plan.id,
+		name: plan.name,
+		type: plan.type,
+		isDefault: plan.isDefault,
+		createdAt: plan.createdAt,
+	}));
+};
+
 const hydrateFromServer = (payload: ServerPayload): {
 	profile: Profile;
 	activeScenarioId: string;
 	snapshotsByScenario: Record<string, ScenarioSnapshotState>;
+	plans: PlanSummary[];
 	hamaScore: number;
 } => {
 	const profile: Profile = {
@@ -233,6 +253,7 @@ const hydrateFromServer = (payload: ServerPayload): {
 		profile,
 		activeScenarioId: payload.activeScenarioId || "base",
 		snapshotsByScenario: normalizeSnapshots(payload.snapshotsByScenario ?? {}),
+		plans: normalizePlans(payload),
 		hamaScore: calcHamaScoreFromProfile(profile),
 	};
 };
@@ -268,6 +289,7 @@ export const useProfileStore = create<ProfileStoreState>((set, get) => ({
 	hamaScore: calcHamaScoreFromProfile(initialProfile),
 	activeScenarioId: "base",
 	activeTimepoint: "now",
+	plans: [{ id: "base", name: "ベースプラン", type: "base", isDefault: true, createdAt: new Date().toISOString() }],
 	snapshotsByScenario: {},
 	isHydrated: false,
 	isLoading: false,
@@ -290,6 +312,10 @@ export const useProfileStore = create<ProfileStoreState>((set, get) => ({
 				hamaScore: calcHamaScoreFromProfile(nextProfile),
 			};
 		});
+	},
+
+	setActivePlan: (planId) => {
+		get().setActiveScenario(planId);
 	},
 
 	setActiveTimepoint: (timepoint) => {
@@ -320,6 +346,98 @@ export const useProfileStore = create<ProfileStoreState>((set, get) => ({
 						},
 			};
 		});
+	},
+
+	createPlan: async (name) => {
+		const state = get();
+		set({ isSaving: true, errorMessage: null });
+
+		try {
+			const response = await fetch("/api/plan", {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({
+					name,
+					sourcePlanId: state.activeScenarioId,
+				}),
+			});
+
+			if (!response.ok) {
+				throw new Error(
+					await readApiErrorMessage(response, `Failed to create plan: ${response.status}`),
+				);
+			}
+
+			const payload = (await response.json()) as { planId: string };
+			await get().loadProfileFromDb();
+			get().setActiveScenario(payload.planId);
+			set({ isSaving: false });
+		} catch (error) {
+			set({
+				isSaving: false,
+				errorMessage: error instanceof Error ? error.message : "Failed to create plan",
+			});
+		}
+	},
+
+	renamePlan: async (planId, name) => {
+		set({ isSaving: true, errorMessage: null });
+
+		try {
+			const response = await fetch("/api/plan", {
+				method: "PATCH",
+				headers: {
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({ planId, name }),
+			});
+
+			if (!response.ok) {
+				throw new Error(
+					await readApiErrorMessage(response, `Failed to rename plan: ${response.status}`),
+				);
+			}
+
+			await get().loadProfileFromDb();
+			set({ isSaving: false });
+		} catch (error) {
+			set({
+				isSaving: false,
+				errorMessage: error instanceof Error ? error.message : "Failed to rename plan",
+			});
+		}
+	},
+
+	deletePlan: async (planId) => {
+		set({ isSaving: true, errorMessage: null });
+
+		try {
+			const response = await fetch("/api/plan", {
+				method: "DELETE",
+				headers: {
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({ planId }),
+			});
+
+			if (!response.ok) {
+				throw new Error(
+					await readApiErrorMessage(response, `Failed to delete plan: ${response.status}`),
+				);
+			}
+
+			const payload = (await response.json()) as { activePlanId: string };
+			await get().loadProfileFromDb();
+			get().setActiveScenario(payload.activePlanId);
+			set({ isSaving: false });
+		} catch (error) {
+			set({
+				isSaving: false,
+				errorMessage: error instanceof Error ? error.message : "Failed to delete plan",
+			});
+		}
 	},
 
 	setProfileMeta: (patch) => {
@@ -566,6 +684,7 @@ export const useProfileStore = create<ProfileStoreState>((set, get) => ({
 			hamaScore: calcHamaScoreFromProfile(nextProfile),
 			activeScenarioId: "base",
 			activeTimepoint: "now",
+			plans: [{ id: "base", name: "ベースプラン", type: "base", isDefault: true, createdAt: new Date().toISOString() }],
 			snapshotsByScenario: {},
 			isHydrated: false,
 			isLoading: false,

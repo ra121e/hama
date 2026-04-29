@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import Link from "next/link";
 import { FinancialInput } from "@/features/financial/components/FinancialInput";
 import { HappinessSlider } from "@/features/happiness/components/HappinessSlider";
+import { PlanSwitcher } from "@/features/plan/components/PlanSwitcher";
 import { TimepointSelector } from "@/features/scenario/components/TimepointSelector";
 import { useProfileStore } from "@/store/profileStore";
 
@@ -57,6 +58,7 @@ export default function InputPage() {
 
       {isHydrated ? (
         <div className="space-y-6">
+          <PlanSwitcher />
           <FinancialInput />
           <HappinessSlider />
         </div>
