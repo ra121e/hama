@@ -1,1 +1,17 @@
-{}
+{
+	"id": "forties",
+	"title": "40代キャリア中盤",
+	"description": "収入の伸びと将来の資産形成を両立しやすいキャリア中盤のテンプレートです。",
+	"timepoint": "now",
+	"financial": {
+		"fin_assets": 24800000,
+		"fin_income": 8600000,
+		"fin_expense": 5200000
+	},
+	"happiness": {
+		"hap_time": 62,
+		"hap_health": 63,
+		"hap_relation": 70,
+		"hap_selfreal": 74
+	}
+}

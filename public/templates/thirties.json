@@ -1,1 +1,17 @@
-{}
+{
+	"id": "thirties",
+	"title": "30代子育て中",
+	"description": "教育費や住居費が増えやすい時期を想定した、家計バランス重視のテンプレートです。",
+	"timepoint": "now",
+	"financial": {
+		"fin_assets": 9200000,
+		"fin_income": 6200000,
+		"fin_expense": 4800000
+	},
+	"happiness": {
+		"hap_time": 58,
+		"hap_health": 55,
+		"hap_relation": 67,
+		"hap_selfreal": 62
+	}
+}

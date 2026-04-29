@@ -1,1 +1,17 @@
-{}
+{
+	"id": "fifties",
+	"title": "50代老後準備",
+	"description": "退職後の生活を見据え、資産の見える化と心身のコンディション維持を意識したテンプレートです。",
+	"timepoint": "now",
+	"financial": {
+		"fin_assets": 48600000,
+		"fin_income": 7200000,
+		"fin_expense": 4600000
+	},
+	"happiness": {
+		"hap_time": 70,
+		"hap_health": 68,
+		"hap_relation": 75,
+		"hap_selfreal": 69
+	}
+}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import type { LifecycleTemplate } from "@/features/plan/lib/lifecycleTemplates";
 import { planNameSchema } from "@/features/plan/schema";
 import { MAX_ADDITIONAL_PLANS } from "@/features/plan/types";
 import { useProfileStore } from "@/store/profileStore";
@@ -9,6 +10,7 @@ export function usePlanManager() {
   const plans = useProfileStore((state) => state.plans);
   const activePlanId = useProfileStore((state) => state.activeScenarioId);
   const setActivePlan = useProfileStore((state) => state.setActivePlan);
+  const applyTemplate = useProfileStore((state) => state.applyTemplate);
   const createPlan = useProfileStore((state) => state.createPlan);
   const renamePlan = useProfileStore((state) => state.renamePlan);
   const deletePlan = useProfileStore((state) => state.deletePlan);
@@ -31,6 +33,7 @@ export function usePlanManager() {
     canCreatePlan,
     validatePlanName,
     setActivePlan,
+    applyTemplate: (template: LifecycleTemplate) => applyTemplate(template),
     createPlan,
     renamePlan,
     deletePlan,

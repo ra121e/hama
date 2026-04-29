@@ -1,1 +1,17 @@
-{}
+{
+	"id": "twenties",
+	"title": "20代社会人スタート",
+	"description": "社会人1〜3年目の生活基盤づくりと、スキル投資を両立するテンプレートです。",
+	"timepoint": "now",
+	"financial": {
+		"fin_assets": 1200000,
+		"fin_income": 3800000,
+		"fin_expense": 2400000
+	},
+	"happiness": {
+		"hap_time": 68,
+		"hap_health": 72,
+		"hap_relation": 60,
+		"hap_selfreal": 78
+	}
+}

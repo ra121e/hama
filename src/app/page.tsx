@@ -9,6 +9,7 @@ import { RadarChart } from "@/features/charts/RadarChart";
 import { FinancialInput } from "@/features/financial/components/FinancialInput";
 import { HappinessSlider } from "@/features/happiness/components/HappinessSlider";
 import { PlanSwitcher } from "@/features/plan/components/PlanSwitcher";
+import { TemplateSelector } from "@/features/plan/components/TemplateSelector";
 import { TimepointSelector } from "@/features/scenario/components/TimepointSelector";
 import { useProfileStore } from "@/store/profileStore";
 
@@ -69,6 +70,7 @@ export default function Home() {
                   ) : null}
                 </CardHeader>
                 <CardContent className="space-y-5">
+                  <TemplateSelector />
                   <PlanSwitcher />
                   <TimepointSelector />
                   <HappinessSlider />

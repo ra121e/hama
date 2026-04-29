@@ -12,6 +12,7 @@ import {
 import { calcHamaScoreFromProfile } from "@/shared/lib/hama-score";
 import type { Snapshot } from "@/entities/scenario";
 import type { PlanSummary } from "@/features/plan/types";
+import type { LifecycleTemplate } from "@/features/plan/lib/lifecycleTemplates";
 
 type ScenarioSnapshotState = Partial<Record<Timepoint, Snapshot[]>>;
 
@@ -55,6 +56,7 @@ type ProfileStoreState = {
 	setActiveScenario: (scenarioId: string) => void;
 	setActivePlan: (planId: string) => void;
 	setActiveTimepoint: (timepoint: Timepoint) => void;
+	applyTemplate: (template: LifecycleTemplate) => void;
 	createPlan: (name: string) => Promise<void>;
 	renamePlan: (planId: string, name: string) => Promise<void>;
 	deletePlan: (planId: string) => Promise<void>;
@@ -344,6 +346,36 @@ export const useProfileStore = create<ProfileStoreState>((set, get) => ({
 								[timepoint]: createSnapshotsFromProfile(nextProfile, state.activeScenarioId, timepoint),
 							},
 						},
+			};
+		});
+	},
+
+	applyTemplate: (template) => {
+		set((state) => {
+			const nextProfile = withUpdatedTimestamp({
+				...state.profile,
+				financial: {
+					...template.financial,
+				},
+				happiness: {
+					...template.happiness,
+				},
+				happinessMemo: {},
+			});
+
+			const targetTimepoint = template.timepoint;
+			const nextSnapshots = createSnapshotsFromProfile(nextProfile, state.activeScenarioId, targetTimepoint);
+
+			return {
+				profile: nextProfile,
+				activeTimepoint: targetTimepoint,
+				hamaScore: calcHamaScoreFromProfile(nextProfile),
+				snapshotsByScenario: {
+					...state.snapshotsByScenario,
+					[state.activeScenarioId]: {
+						[targetTimepoint]: nextSnapshots,
+					},
+				},
 			};
 		});
 	},

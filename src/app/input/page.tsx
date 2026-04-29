@@ -5,6 +5,7 @@ import Link from "next/link";
 import { FinancialInput } from "@/features/financial/components/FinancialInput";
 import { HappinessSlider } from "@/features/happiness/components/HappinessSlider";
 import { PlanSwitcher } from "@/features/plan/components/PlanSwitcher";
+import { TemplateSelector } from "@/features/plan/components/TemplateSelector";
 import { TimepointSelector } from "@/features/scenario/components/TimepointSelector";
 import { useProfileStore } from "@/store/profileStore";
 
@@ -58,6 +59,7 @@ export default function InputPage() {
 
       {isHydrated ? (
         <div className="space-y-6">
+          <TemplateSelector />
           <PlanSwitcher />
           <FinancialInput />
           <HappinessSlider />
