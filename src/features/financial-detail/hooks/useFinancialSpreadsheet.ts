@@ -21,7 +21,8 @@ export type SpreadsheetColumn = {
 	id: string;
 	label: string;
 	yearMonth: string | null; // null for aggregation columns
-	type: "month" | "year" | "total" | "average";
+	periodMonths: string[];
+	type: "month" | "year" | "fiveYear" | "total" | "average";
 };
 
 type LoadState = {
@@ -35,14 +36,24 @@ type LoadState = {
 };
 
 const generateMonthColumns = (): SpreadsheetColumn[] => {
+	const buildPeriodMonths = (startDate: Date, count: number) => {
+		return Array.from({ length: count }, (_, index) => {
+			const date = new Date(startDate.getFullYear(), startDate.getMonth() + index, 1);
+			const year = date.getFullYear();
+			const month = String(date.getMonth() + 1).padStart(2, "0");
+			return `${year}-${month}`;
+		});
+	};
+
 	const columns: SpreadsheetColumn[] = [];
 	const now = new Date();
 	const currentYear = now.getFullYear();
 	const currentMonth = now.getMonth();
+	const baseDate = new Date(currentYear, currentMonth, 1);
 
 	// 直近36ヶ月
 	for (let i = 0; i < 36; i++) {
-		const date = new Date(currentYear, currentMonth + i, 1);
+		const date = new Date(baseDate.getFullYear(), baseDate.getMonth() + i, 1);
 		const year = date.getFullYear();
 		const month = String(date.getMonth() + 1).padStart(2, "0");
 		const yearMonth = `${year}-${month}`;
@@ -51,18 +62,38 @@ const generateMonthColumns = (): SpreadsheetColumn[] => {
 			id: `month_${yearMonth}`,
 			label: `${String(month).padStart(2, "0")}`,
 			yearMonth,
+			periodMonths: [yearMonth],
 			type: "month",
 		});
 	}
 
 	// 37ヶ月以降は年次列
-	for (let i = 3; i <= 10; i++) {
-		const year = currentYear + i;
+	for (let i = 0; i < 7; i++) {
+		const periodStart = new Date(baseDate.getFullYear(), baseDate.getMonth() + 36 + i * 12, 1);
+		const periodMonths = buildPeriodMonths(periodStart, 12);
+		const year = periodStart.getFullYear();
 		columns.push({
 			id: `year_${year}`,
 			label: `${year}`,
 			yearMonth: null,
+			periodMonths,
 			type: "year",
+		});
+	}
+
+	// 11年目以降は5年ごとの列
+	for (let i = 0; i < 4; i++) {
+		const periodStart = new Date(baseDate.getFullYear(), baseDate.getMonth() + 120 + i * 60, 1);
+		const periodMonths = buildPeriodMonths(periodStart, 60);
+		const startYear = periodStart.getFullYear();
+		const endYear = startYear + 4;
+
+		columns.push({
+			id: `five_year_${startYear}`,
+			label: `${startYear}-${endYear}`,
+			yearMonth: null,
+			periodMonths,
+			type: "fiveYear",
 		});
 	}
 
@@ -71,6 +102,7 @@ const generateMonthColumns = (): SpreadsheetColumn[] => {
 		id: "total",
 		label: "合計",
 		yearMonth: null,
+		periodMonths: [],
 		type: "total",
 	});
 
@@ -260,6 +292,63 @@ export function useFinancialSpreadsheet(scenarioId: string | null) {
 		[scenarioId, loadData]
 	);
 
+	const savePeriodValue = useCallback(
+		async (itemId: string, periodMonths: string[], value: number) => {
+			if (!scenarioId) {
+				console.error("scenarioId is not available");
+				return;
+			}
+
+			const itemEntries = state.entries.filter((entry) => entry.itemId === itemId);
+			const entriesByMonth = new Map(itemEntries.map((entry) => [entry.yearMonth, entry] as const));
+
+			try {
+				for (const yearMonth of periodMonths) {
+					const existingEntry = entriesByMonth.get(yearMonth);
+
+					if (existingEntry) {
+						const response = await fetch("/api/financial-entries", {
+							method: "PATCH",
+							headers: { "Content-Type": "application/json" },
+							body: JSON.stringify({
+								id: existingEntry.id,
+								value,
+							}),
+						});
+
+						if (!response.ok) {
+							const error = await response.json();
+							throw new Error(error.message || "Failed to update financial entry");
+						}
+						continue;
+					}
+
+					const response = await fetch("/api/financial-entries", {
+						method: "POST",
+						headers: { "Content-Type": "application/json" },
+						body: JSON.stringify({
+							scenarioId,
+							itemId,
+							yearMonth,
+							value,
+						}),
+					});
+
+					if (!response.ok) {
+						const error = await response.json();
+						throw new Error(error.message || "Failed to create financial entry");
+					}
+				}
+
+				await new Promise((resolve) => setTimeout(resolve, 100));
+				await loadData();
+			} catch (error) {
+				console.error("Error saving period value:", error);
+			}
+		},
+		[scenarioId, state.entries, loadData]
+	);
+
 	return {
 		rows: state.rows,
 		columns: state.columns,
@@ -267,5 +356,6 @@ export function useFinancialSpreadsheet(scenarioId: string | null) {
 		error: state.error,
 		updateEntry,
 		createEntry,
+		savePeriodValue,
 	};
 }

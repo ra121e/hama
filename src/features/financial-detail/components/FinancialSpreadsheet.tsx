@@ -19,12 +19,13 @@ name: string;
 level: string;
 isAutoCalc: boolean;
 children: SpreadsheetRow[];
+entries: SpreadsheetRow["entries"];
 total: number;
-[key: string]: string | number | boolean | SpreadsheetRow[] | null | undefined;
+[key: string]: string | number | boolean | SpreadsheetRow[] | SpreadsheetRow["entries"] | null | undefined;
 };
 
 export function FinancialSpreadsheet({ scenarioId }: Props) {
-const { rows, columns, isLoading, error, updateEntry, createEntry } =
+const { rows, columns, isLoading, error, savePeriodValue } =
 useFinancialSpreadsheet(scenarioId);
 
 const gridApiRef = useRef<GridApi | null>(null);
@@ -40,6 +41,22 @@ const handleGridReady = useCallback((event: GridReadyEvent) => {
 const preparedRowData = useMemo(() => {
 const result: RowData[] = [];
 
+const getColumnValue = (entries: SpreadsheetRow["entries"], periodMonths: string[]) => {
+if (periodMonths.length === 0) {
+return 0;
+}
+
+if (periodMonths.length === 1) {
+return entries.get(periodMonths[0])?.value ?? 0;
+}
+
+const total = periodMonths.reduce((sum, yearMonth) => {
+return sum + (entries.get(yearMonth)?.value ?? 0);
+}, 0);
+
+return total / periodMonths.length;
+};
+
 const traverse = (items: SpreadsheetRow[]) => {
 items.forEach((item) => {
 // Prepare row with all monthly/yearly data
@@ -49,15 +66,14 @@ name: item.name,
 level: item.level,
 isAutoCalc: item.isAutoCalc,
 children: item.children,
+entries: item.entries,
 total: 0, // Initialize, will be calculated below
 };
 
 // Add entry data for each column
 columns.forEach((col) => {
-if (col.yearMonth) {
-const entry = item.entries?.get(col.yearMonth);
-row[col.yearMonth] = entry ? entry.value : 0;
-row[`${col.yearMonth}_entryId`] = entry ? entry.id : null;
+if (col.type !== "total") {
+row[col.id] = getColumnValue(item.entries, col.periodMonths);
 }
 });
 
@@ -111,13 +127,13 @@ return style;
 },
 ];
 
-// Add columns for each month
+// Add period columns
 columns.forEach((col) => {
-if (col.yearMonth) {
+if (col.type !== "total") {
 cols.push({
-field: col.yearMonth,
+field: col.id,
 headerName: col.label,
-width: 120,
+width: col.type === "month" ? 90 : 120,
 editable: (params) => {
 return !params.data?.isAutoCalc;
 },
@@ -135,17 +151,12 @@ onCellValueChanged: async (event) => {
 const row = event.data as RowData;
 const newValue = Number(event.newValue) || 0;
 
-if (!row.id || !col.yearMonth) return;
+if (!row.id) return;
 
-const entryId = row[`${col.yearMonth}_entryId`] as string | null;
-if (entryId) {
-await updateEntry(entryId, newValue);
-} else {
-await createEntry(row.id, col.yearMonth, newValue);
-}
+await savePeriodValue(row.id, col.periodMonths, newValue);
 // After updating data, auto-size this column to fit new content
 try {
-	const colId = col.yearMonth as string;
+	const colId = col.id;
 	gridApiRef.current?.autoSizeColumns([colId], false);
 	} catch {
 	// ignore
@@ -173,7 +184,7 @@ cellStyle: { backgroundColor: "rgb(219, 234, 254)" },
 });
 
 return cols;
-}, [columns, updateEntry, createEntry]);
+}, [columns, savePeriodValue]);
 
 if (isLoading) {
 return (
