@@ -1,9 +1,9 @@
 "use client";
 
-import { useMemo, useCallback } from "react";
+import { useMemo, useCallback, useRef } from "react";
 import { AllCommunityModule, ModuleRegistry } from "ag-grid-community";
 import { AgGridReact } from "ag-grid-react";
-import type { ColDef, GridReadyEvent } from "ag-grid-community";
+import type { ColDef, GridReadyEvent, GridApi, ColumnApi } from "ag-grid-community";
 import { useFinancialSpreadsheet, type SpreadsheetRow } from "@/features/financial-detail/hooks/useFinancialSpreadsheet";
 import { formatCurrency } from "@/shared/lib/formatter";
 
@@ -27,8 +27,18 @@ export function FinancialSpreadsheet({ scenarioId }: Props) {
 const { rows, columns, isLoading, error, updateEntry, createEntry } =
 useFinancialSpreadsheet(scenarioId);
 
+const gridApiRef = useRef<GridApi | null>(null);
+const columnApiRef = useRef<ColumnApi | null>(null);
+
 const handleGridReady = useCallback((event: GridReadyEvent) => {
-event.api.sizeColumnsToFit();
+	gridApiRef.current = event.api;
+	columnApiRef.current = event.columnApi;
+
+	// Auto-size all columns to fit content initially (allow horizontal scrollbar)
+	const allColIds = event.columnApi.getAllColumns()?.map((c) => c.getColId()) ?? [];
+	if (allColIds.length) {
+		event.columnApi.autoSizeColumns(allColIds, false);
+	}
 }, []);
 
 // Flatten hierarchical rows and prepare data for ag-Grid
@@ -128,7 +138,7 @@ return formatCurrency(value);
 },
 onCellValueChanged: async (event) => {
 const row = event.data as RowData;
-const newValue = event.newValue as number;
+const newValue = Number(event.newValue) || 0;
 
 if (!row.id || !col.yearMonth) return;
 
@@ -137,6 +147,13 @@ if (entryId) {
 await updateEntry(entryId, newValue);
 } else {
 await createEntry(row.id, col.yearMonth, newValue);
+}
+// After updating data, auto-size this column to fit new content
+try {
+	const colId = col.yearMonth as string;
+	event.columnApi?.autoSizeColumns([colId], false);
+} catch (e) {
+	// ignore
 }
 },
 cellClass: (params) => {
@@ -194,18 +211,21 @@ return (
 }
 
 return (
-<div className="ag-theme-quartz h-full w-full" style={{ "--ag-font-size": "13px" } as React.CSSProperties}>
-<AgGridReact
-columnDefs={columnDefs}
-rowData={preparedRowData}
-onGridReady={handleGridReady}
-rowHeight={36}
-defaultColDef={{
-resizable: true,
-sortable: false,
-filter: false,
-}}
-/>
-</div>
+	<div className="w-full" style={{ "--ag-font-size": "13px" } as React.CSSProperties}>
+		<div className="ag-theme-quartz w-full">
+			<AgGridReact
+				domLayout="autoHeight"
+				columnDefs={columnDefs}
+				rowData={preparedRowData}
+				onGridReady={handleGridReady}
+				rowHeight={36}
+				defaultColDef={{
+					resizable: true,
+					sortable: false,
+					filter: false,
+				}}
+			/>
+		</div>
+	</div>
 );
 }
