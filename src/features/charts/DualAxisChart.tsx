@@ -9,8 +9,10 @@ import { CanvasRenderer } from "echarts/renderers";
 import { calcHamaScore } from "@/shared/lib/hama-score";
 import { useProfileStore } from "@/store/profileStore";
 import { useUIStore } from "@/store/uiStore";
+import { useFinancialEntriesForChart } from "@/features/financial-detail/hooks/useFinancialEntriesForChart";
 import { cn } from "@/lib/utils";
 import type { Snapshot } from "@/entities/scenario";
+import type { Timepoint } from "@/shared/lib/financial-aggregator";
 
 echarts.use([LineChart, GridComponent, LegendComponent, TooltipComponent, CanvasRenderer]);
 
@@ -78,23 +80,74 @@ export function DualAxisChart({ className, showHappinessSeries = true }: DualAxi
   const snapshotsByScenario = useProfileStore((state) => state.snapshotsByScenario);
   const chartOpacity = useUIStore((state) => state.chartOpacity);
 
+  // F06：FinancialEntry（月次データ）から4時点への集約データを取得
+  const financialEntriesData = useFinancialEntriesForChart(activeScenarioId);
+
   const timeline = useMemo(() => {
     const scenarioSnapshots = snapshotsByScenario[activeScenarioId] ?? {};
+    const basePointFromProfile = createBasePoint(profile);
 
     const points: PointData[] = [];
-    const basePointFromProfile = createBasePoint(profile);
-    const nowSnapshots = scenarioSnapshots.now ?? [];
-    let carry =
-      nowSnapshots.length > 0
-        ? applySnapshotToPoint(basePointFromProfile, nowSnapshots)
-        : basePointFromProfile;
 
     for (const timepoint of TIMEPOINTS) {
-      const snapshots = scenarioSnapshots[timepoint.key] ?? [];
-      const next: PointData = applySnapshotToPoint(carry, snapshots);
+      const key = timepoint.key as Timepoint;
+      const snapshotsForTimepoint = scenarioSnapshots[key] ?? [];
 
-      points.push(next);
-      carry = next;
+      // 財務データ：FinancialEntry の集約データがあればそちらを優先、なければ Snapshot → プロファイル
+      const financialData = financialEntriesData.data;
+      const hasFinancialEntries =
+        financialData &&
+        (financialData.assets[key] !== 0 ||
+          financialData.income[key] !== 0 ||
+          financialData.expense[key] !== 0);
+
+      let point: PointData;
+      if (hasFinancialEntries && financialData) {
+        // FinancialEntry データを使用
+        point = {
+          assets: financialData.assets[key] ?? 0,
+          income: financialData.income[key] ?? 0,
+          expense: financialData.expense[key] ?? 0,
+          // ハッピー項目は Snapshot から取得
+          hap_time: 0,
+          hap_health: 0,
+          hap_relation: 0,
+          hap_selfreal: 0,
+        };
+      } else {
+        // Snapshot データを使用（従来通り）
+        point = {
+          ...basePointFromProfile,
+        };
+        point = applySnapshotToPoint(point, snapshotsForTimepoint);
+      }
+
+      // ハッピー項目は常に Snapshot を適用（FinancialEntry には存在しない）
+      // 既に applySnapshotToPoint で設定されているか、basePointFromProfile から取得している
+      if (hasFinancialEntries && financialData) {
+        // FinancialEntry 使用時も Snapshot でハッピー項目を上書き
+        const happinessSnapshot = snapshotsForTimepoint.filter(
+          (s) => s.categoryId === "happiness"
+        );
+        if (happinessSnapshot.length > 0) {
+          point = applySnapshotToPoint(point, happinessSnapshot);
+        } else {
+          // Snapshot にハッピー項目がなければ、前の時点のハッピー値を引き継ぐ
+          if (points.length > 0) {
+            point.hap_time = points[points.length - 1].hap_time;
+            point.hap_health = points[points.length - 1].hap_health;
+            point.hap_relation = points[points.length - 1].hap_relation;
+            point.hap_selfreal = points[points.length - 1].hap_selfreal;
+          } else {
+            point.hap_time = basePointFromProfile.hap_time;
+            point.hap_health = basePointFromProfile.hap_health;
+            point.hap_relation = basePointFromProfile.hap_relation;
+            point.hap_selfreal = basePointFromProfile.hap_selfreal;
+          }
+        }
+      }
+
+      points.push(point);
     }
 
     const scoreSeries = points.map((point) =>
@@ -134,7 +187,7 @@ export function DualAxisChart({ className, showHappinessSeries = true }: DualAxi
       hap_selfreal: points.map((point) => point.hap_selfreal),
       hama: scoreSeries,
     };
-  }, [activeScenarioId, profile, snapshotsByScenario]);
+  }, [activeScenarioId, profile, snapshotsByScenario, financialEntriesData.data]);
 
   const financialAxisRange = useMemo(() => {
     const values = [...timeline.assets, ...timeline.income, ...timeline.expense, ...timeline.balance];

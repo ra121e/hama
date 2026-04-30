@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/components/ui/use-toast";
 import { FinancialItemManager } from "@/features/financial-detail/components/FinancialItemManager";
 import { FinancialSpreadsheet } from "@/features/financial-detail/components/FinancialSpreadsheet";
+import { AggregateDebugPanel } from "@/features/financial-detail/components/AggregateDebugPanel";
 import { useScenarioStore } from "@/store/scenarioStore";
 
 export default function DetailInputPage() {
@@ -66,6 +67,9 @@ export default function DetailInputPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* F06開発用：集約デバッグパネル */}
+      <AggregateDebugPanel scenarioId={selectedScenarioId} visible={true} />
     </main>
   );
 }

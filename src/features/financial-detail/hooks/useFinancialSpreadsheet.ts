@@ -153,6 +153,7 @@ export function useFinancialSpreadsheet(scenarioId: string | null) {
 				items,
 				entries: entriesPayload.entries,
 				isLoading: false,
+				isSaving: false,
 				error: null,
 			});
 		} catch (error) {
@@ -320,6 +321,7 @@ export function useFinancialSpreadsheet(scenarioId: string | null) {
 	return {
 		rows: state.rows,
 		columns: state.columns,
+		entries: state.entries,
 		isLoading: state.isLoading,
 		isSaving: state.isSaving,
 		error: state.error,
