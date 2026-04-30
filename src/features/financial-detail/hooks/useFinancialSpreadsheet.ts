@@ -3,6 +3,9 @@
 import { useEffect, useState, useCallback } from "react";
 import type { FinancialItem, FinancialEntry } from "@/entities/financial-item";
 import { useFinancialItems } from "@/features/financial-detail/hooks/useFinancialItems";
+import type { SpreadsheetColumn } from "@/features/financial-detail/lib/spreadsheet";
+import { generateSpreadsheetColumns } from "@/features/financial-detail/lib/spreadsheet";
+export type { SpreadsheetColumn } from "@/features/financial-detail/lib/spreadsheet";
 
 export type SpreadsheetRow = {
 	id: string;
@@ -17,14 +20,6 @@ export type SpreadsheetRow = {
 	entries: Map<string, FinancialEntry>;
 };
 
-export type SpreadsheetColumn = {
-	id: string;
-	label: string;
-	yearMonth: string | null; // null for aggregation columns
-	periodMonths: string[];
-	type: "month" | "year" | "fiveYear" | "total" | "average";
-};
-
 type LoadState = {
 	scenarioId: string | null;
 	rows: SpreadsheetRow[];
@@ -33,80 +28,6 @@ type LoadState = {
 	entries: FinancialEntry[];
 	isLoading: boolean;
 	error: string | null;
-};
-
-const generateMonthColumns = (): SpreadsheetColumn[] => {
-	const buildPeriodMonths = (startDate: Date, count: number) => {
-		return Array.from({ length: count }, (_, index) => {
-			const date = new Date(startDate.getFullYear(), startDate.getMonth() + index, 1);
-			const year = date.getFullYear();
-			const month = String(date.getMonth() + 1).padStart(2, "0");
-			return `${year}-${month}`;
-		});
-	};
-
-	const columns: SpreadsheetColumn[] = [];
-	const now = new Date();
-	const currentYear = now.getFullYear();
-	const currentMonth = now.getMonth();
-	const baseDate = new Date(currentYear, currentMonth, 1);
-
-	// 直近36ヶ月
-	for (let i = 0; i < 36; i++) {
-		const date = new Date(baseDate.getFullYear(), baseDate.getMonth() + i, 1);
-		const year = date.getFullYear();
-		const month = String(date.getMonth() + 1).padStart(2, "0");
-		const yearMonth = `${year}-${month}`;
-
-		columns.push({
-			id: `month_${yearMonth}`,
-			label: `${String(month).padStart(2, "0")}`,
-			yearMonth,
-			periodMonths: [yearMonth],
-			type: "month",
-		});
-	}
-
-	// 37ヶ月以降は年次列
-	for (let i = 0; i < 7; i++) {
-		const periodStart = new Date(baseDate.getFullYear(), baseDate.getMonth() + 36 + i * 12, 1);
-		const periodMonths = buildPeriodMonths(periodStart, 12);
-		const year = periodStart.getFullYear();
-		columns.push({
-			id: `year_${year}`,
-			label: `${year}`,
-			yearMonth: null,
-			periodMonths,
-			type: "year",
-		});
-	}
-
-	// 11年目以降は5年ごとの列
-	for (let i = 0; i < 4; i++) {
-		const periodStart = new Date(baseDate.getFullYear(), baseDate.getMonth() + 120 + i * 60, 1);
-		const periodMonths = buildPeriodMonths(periodStart, 60);
-		const startYear = periodStart.getFullYear();
-		const endYear = startYear + 4;
-
-		columns.push({
-			id: `five_year_${startYear}`,
-			label: `${startYear}-${endYear}`,
-			yearMonth: null,
-			periodMonths,
-			type: "fiveYear",
-		});
-	}
-
-	// 合計列
-	columns.push({
-		id: "total",
-		label: "合計",
-		yearMonth: null,
-		periodMonths: [],
-		type: "total",
-	});
-
-	return columns;
 };
 
 const buildRowTree = (
@@ -203,7 +124,7 @@ export function useFinancialSpreadsheet(scenarioId: string | null) {
 				entries: FinancialEntry[];
 			};
 
-			const columns = generateMonthColumns();
+			const columns = generateSpreadsheetColumns();
 			const rows = buildRowTree(items, entriesPayload.entries);
 
 			setState({
