@@ -1,5 +1,12 @@
 import { prisma } from "@/lib/prisma";
 
+type FinancialEntryPayload = {
+	yearMonth: string;
+	value: number;
+	isExpanded?: boolean;
+	memo?: string;
+};
+
 export async function GET(request: Request) {
 	try {
 		const url = new URL(request.url);
@@ -108,16 +115,79 @@ export async function POST(request: Request) {
 		const body = (await request.json()) as {
 			scenarioId: string;
 			itemId: string;
-			yearMonth: string;
-			value: number;
+			yearMonth?: string;
+			value?: number;
 			memo?: string;
+			isExpanded?: boolean;
+			entries?: FinancialEntryPayload[];
 		};
 
-		const { scenarioId, itemId, yearMonth, value, memo } = body;
+		const { scenarioId, itemId, yearMonth, value, memo, isExpanded, entries } = body;
 
-		if (!scenarioId || !itemId || !yearMonth) {
+		if (!scenarioId || !itemId) {
 			return Response.json(
-				{ message: "scenarioId, itemId, and yearMonth are required" },
+				{ message: "scenarioId and itemId are required" },
+				{ status: 400 }
+			);
+		}
+
+		if (entries && entries.length > 0) {
+			const savedEntries = await prisma.$transaction(async (tx) => {
+				const result = [] as Array<{
+					id: string;
+					scenarioId: string;
+					itemId: string;
+					yearMonth: string;
+					value: number;
+					isExpanded: boolean;
+					memo: string | null;
+				}>;
+
+				for (const entryInput of entries) {
+					await tx.financialEntry.deleteMany({
+						where: {
+							scenarioId,
+							itemId,
+							yearMonth: entryInput.yearMonth,
+						},
+					});
+
+					const created = await tx.financialEntry.create({
+						data: {
+							scenarioId,
+							itemId,
+							yearMonth: entryInput.yearMonth,
+							value: entryInput.value,
+							isExpanded: entryInput.isExpanded ?? false,
+							memo: entryInput.memo ?? null,
+						},
+					});
+
+					result.push({
+						id: created.id,
+						scenarioId: created.scenarioId,
+						itemId: created.itemId,
+						yearMonth: created.yearMonth,
+						value: created.value,
+						isExpanded: created.isExpanded,
+						memo: created.memo,
+					});
+				}
+
+				return result;
+			});
+
+			return Response.json({
+				scenarioId,
+				itemId,
+				savedCount: savedEntries.length,
+				entries: savedEntries,
+			});
+		}
+
+		if (!yearMonth || value === undefined) {
+			return Response.json(
+				{ message: "yearMonth and value are required" },
 				{ status: 400 }
 			);
 		}
@@ -132,10 +202,24 @@ export async function POST(request: Request) {
 		});
 
 		if (existing) {
-			return Response.json(
-				{ message: "Entry already exists for this item and month" },
-				{ status: 409 }
-			);
+			const updated = await prisma.financialEntry.update({
+				where: { id: existing.id },
+				data: {
+					value,
+					memo: memo || null,
+					isExpanded: isExpanded ?? existing.isExpanded,
+				},
+			});
+
+			return Response.json({
+				id: updated.id,
+				scenarioId: updated.scenarioId,
+				itemId: updated.itemId,
+				yearMonth: updated.yearMonth,
+				value: updated.value,
+				isExpanded: updated.isExpanded,
+				memo: updated.memo,
+			});
 		}
 
 		const entry = await prisma.financialEntry.create({
@@ -144,6 +228,7 @@ export async function POST(request: Request) {
 				itemId,
 				yearMonth,
 				value,
+				isExpanded: isExpanded ?? false,
 				memo: memo || null,
 			},
 		});

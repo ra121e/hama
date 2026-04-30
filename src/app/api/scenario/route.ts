@@ -23,9 +23,36 @@ const ensureProfile = async () => {
   });
 };
 
+const ensureBaseScenario = async (profileId: string) => {
+  const existing = await prisma.scenario.findUnique({ where: { id: "base" } });
+
+  if (existing) {
+    return prisma.scenario.update({
+      where: { id: "base" },
+      data: {
+        profileId,
+        name: "ベースケース",
+        type: "base",
+        isDefault: true,
+      },
+    });
+  }
+
+  return prisma.scenario.create({
+    data: {
+      id: "base",
+      profileId,
+      name: "ベースケース",
+      type: "base",
+      isDefault: true,
+    },
+  });
+};
+
 export async function GET() {
   try {
     const profile = await ensureProfile();
+    await ensureBaseScenario(profile.id);
     const scenarios = await prisma.scenario.findMany({
       where: { profileId: profile.id },
       orderBy: { createdAt: "asc" },
@@ -62,6 +89,7 @@ export async function POST(request: Request) {
       isDefault?: boolean;
     };
     const profile = await ensureProfile();
+    await ensureBaseScenario(profile.id);
 
     if (body.isDefault) {
       await prisma.scenario.updateMany({

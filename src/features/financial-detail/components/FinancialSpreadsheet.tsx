@@ -12,6 +12,8 @@ ModuleRegistry.registerModules([AllCommunityModule]);
 
 interface Props {
 	scenarioId: string;
+	onYearlyExpanded?: (expandedCount: number) => void;
+	onSaveError?: (message: string) => void;
 }
 
 type RowData = {
@@ -19,14 +21,17 @@ type RowData = {
 	name: string;
 	level: string;
 	isAutoCalc: boolean;
+	category: SpreadsheetRow["category"];
+	autoCalc: SpreadsheetRow["autoCalc"];
+	rate: SpreadsheetRow["rate"];
 	children: SpreadsheetRow[];
 	entries: SpreadsheetRow["entries"];
 	total: number;
 	[key: string]: string | number | boolean | SpreadsheetRow[] | SpreadsheetRow["entries"] | null | undefined;
 };
 
-export function FinancialSpreadsheet({ scenarioId }: Props) {
-	const { rows, columns, isLoading, error, savePeriodValue } = useFinancialSpreadsheet(scenarioId);
+export function FinancialSpreadsheet({ scenarioId, onYearlyExpanded, onSaveError }: Props) {
+	const { rows, columns, isLoading, isSaving, error, savePeriodValue } = useFinancialSpreadsheet(scenarioId);
 
 	const gridApiRef = useRef<GridApi | null>(null);
 	const gridContainerRef = useRef<HTMLDivElement>(null);
@@ -64,6 +69,9 @@ export function FinancialSpreadsheet({ scenarioId }: Props) {
 					name: item.name,
 					level: item.level,
 					isAutoCalc: item.isAutoCalc,
+					category: item.category,
+					autoCalc: item.autoCalc,
+					rate: item.rate,
 					children: item.children,
 					entries: item.entries,
 					total: 0,
@@ -189,7 +197,20 @@ export function FinancialSpreadsheet({ scenarioId }: Props) {
 						}
 					}
 
-					await savePeriodValue(row.id, col.periodMonths, newValue);
+					const result = await savePeriodValue(row.id, col.periodMonths, newValue, {
+						columnType: col.type,
+						category: row.category,
+						autoCalc: row.autoCalc,
+						rate: row.rate,
+					});
+
+					if (!result.ok && result.error && onSaveError) {
+						onSaveError(result.error);
+					}
+
+					if (result.ok && result.expandedCount > 0 && onYearlyExpanded) {
+						onYearlyExpanded(result.expandedCount);
+					}
 
 					setTimeout(() => {
 						try {
@@ -242,6 +263,11 @@ export function FinancialSpreadsheet({ scenarioId }: Props) {
 
 	return (
 		<div className="w-full" style={{ "--ag-font-size": "13px" } as React.CSSProperties} ref={gridContainerRef}>
+			{isSaving && (
+				<div className="mb-3 rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-700 dark:border-blue-900 dark:bg-blue-950 dark:text-blue-200">
+					保存中...
+				</div>
+			)}
 			<div className="ag-theme-quartz w-full">
 				<AgGridReact
 					columnDefs={columnDefs}

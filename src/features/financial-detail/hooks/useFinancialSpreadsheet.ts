@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import type { FinancialItem, FinancialEntry } from "@/entities/financial-item";
+import type { FinancialItem, FinancialEntry, FinancialAutoCalc, FinancialItemCategory } from "@/entities/financial-item";
+import { expandYearlyToMonthly } from "@/features/financial-detail/engine/expandYearlyToMonthly";
 import { useFinancialItems } from "@/features/financial-detail/hooks/useFinancialItems";
 import type { SpreadsheetColumn } from "@/features/financial-detail/lib/spreadsheet";
 import { generateSpreadsheetColumns } from "@/features/financial-detail/lib/spreadsheet";
@@ -12,12 +13,27 @@ export type SpreadsheetRow = {
 	itemId: string;
 	name: string;
 	level: "large" | "medium" | "small";
-	category: string;
-	autoCalc: string;
+	category: FinancialItemCategory;
+	autoCalc: FinancialAutoCalc;
 	isAutoCalc: boolean;
+	rate: number | null;
 	parentId: string | null;
 	children: SpreadsheetRow[];
 	entries: Map<string, FinancialEntry>;
+};
+
+type SavePeriodValueOptions = {
+	columnType?: SpreadsheetColumn["type"];
+	eventMonths?: number[];
+	category?: SpreadsheetRow["category"];
+	autoCalc?: SpreadsheetRow["autoCalc"];
+	rate?: number | null;
+};
+
+type SavePeriodValueResult = {
+	ok: boolean;
+	expandedCount: number;
+	error?: string;
 };
 
 type LoadState = {
@@ -27,6 +43,7 @@ type LoadState = {
 	items: FinancialItem[];
 	entries: FinancialEntry[];
 	isLoading: boolean;
+	isSaving: boolean;
 	error: string | null;
 };
 
@@ -62,6 +79,7 @@ const buildRowTree = (
 			category: item.category,
 			autoCalc: item.autoCalc,
 			isAutoCalc: item.autoCalc !== "none",
+			rate: item.rate,
 			parentId: item.parentId,
 			entries: entriesByMonth,
 			children: buildRowTree(items, entries, item.id),
@@ -80,6 +98,7 @@ export function useFinancialSpreadsheet(scenarioId: string | null) {
 		items: [],
 		entries: [],
 		isLoading: true,
+		isSaving: false,
 		error: null,
 	});
 
@@ -214,66 +233,87 @@ export function useFinancialSpreadsheet(scenarioId: string | null) {
 	);
 
 	const savePeriodValue = useCallback(
-		async (itemId: string, periodMonths: string[], value: number) => {
+		async (
+			itemId: string,
+			periodMonths: string[],
+			value: number,
+			options?: SavePeriodValueOptions
+		): Promise<SavePeriodValueResult> => {
 			if (!scenarioId) {
-				console.error("scenarioId is not available");
-				return;
+				return {
+					ok: false,
+					expandedCount: 0,
+					error: "scenarioId is not available",
+				};
 			}
 
-			const itemEntries = state.entries.filter((entry) => entry.itemId === itemId);
-			const entriesByMonth = new Map(itemEntries.map((entry) => [entry.yearMonth, entry] as const));
+			setState((current) => ({ ...current, isSaving: true, error: null }));
 
 			try {
-				for (const yearMonth of periodMonths) {
-					const existingEntry = entriesByMonth.get(yearMonth);
+				const isYearlyColumn = options?.columnType === "year" && periodMonths.length === 12;
+				const isExpanded = isYearlyColumn;
 
-					if (existingEntry) {
-						const response = await fetch("/api/financial-entries", {
-							method: "PATCH",
-							headers: { "Content-Type": "application/json" },
-							body: JSON.stringify({
-								id: existingEntry.id,
-								value,
-							}),
-						});
+				const entries = isYearlyColumn
+					? expandYearlyToMonthly({
+						periodMonths,
+						yearlyValue: value,
+						category: options?.category ?? "expense",
+						autoCalc: options?.autoCalc ?? "none",
+						rate: options?.rate,
+						eventMonths: options?.eventMonths,
+					})
+					: periodMonths.map((yearMonth) => ({
+						yearMonth,
+						value,
+						isExpanded,
+					}));
 
-						if (!response.ok) {
-							const error = await response.json();
-							throw new Error(error.message || "Failed to update financial entry");
-						}
-						continue;
-					}
+				const response = await fetch("/api/financial-entries", {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({
+						scenarioId,
+						itemId,
+						entries,
+					}),
+				});
 
-					const response = await fetch("/api/financial-entries", {
-						method: "POST",
-						headers: { "Content-Type": "application/json" },
-						body: JSON.stringify({
-							scenarioId,
-							itemId,
-							yearMonth,
-							value,
-						}),
-					});
-
-					if (!response.ok) {
-						const error = await response.json();
-						throw new Error(error.message || "Failed to create financial entry");
-					}
+				if (!response.ok) {
+					const error = await response.json();
+					throw new Error(error.message || "Failed to save financial entries");
 				}
 
 				await new Promise((resolve) => setTimeout(resolve, 100));
 				await loadData();
+
+				setState((current) => ({ ...current, isSaving: false }));
+				return {
+					ok: true,
+					expandedCount: isYearlyColumn ? entries.length : 0,
+				};
 			} catch (error) {
+				const message = error instanceof Error ? error.message : "Error saving period value";
+				setState((current) => ({
+					...current,
+					isSaving: false,
+					error: message,
+				}));
 				console.error("Error saving period value:", error);
+				return {
+					ok: false,
+					expandedCount: 0,
+					error: message,
+				};
 			}
 		},
-		[scenarioId, state.entries, loadData]
+		[scenarioId, loadData]
 	);
 
 	return {
 		rows: state.rows,
 		columns: state.columns,
 		isLoading: state.isLoading,
+		isSaving: state.isSaving,
 		error: state.error,
 		updateEntry,
 		createEntry,

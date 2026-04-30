@@ -241,27 +241,49 @@ const fetchProfileBundle = async (preferredScenarioId?: string) => {
       data: {
         name: DEFAULT_PROFILE_NAME,
         currency: "JPY",
-        scenarios: {
-          create: {
-            id: DEFAULT_SCENARIO_ID,
-            name: DEFAULT_SCENARIO_NAME,
-            type: "base",
-            isDefault: true,
-            snapshots: {
-              create: buildSnapshotCreateInput(
-                DEFAULT_SCENARIO_ID,
-                DEFAULT_FINANCIAL,
-                DEFAULT_HAPPINESS,
-                {},
-                "now",
-              ),
-            },
-          },
-        },
         settings: {
           create: DEFAULT_SETTINGS,
         },
       },
+      include: {
+        settings: true,
+        scenarios: {
+          orderBy: { createdAt: "asc" },
+          include: {
+            snapshots: true,
+          },
+        },
+      },
+    });
+
+    await prisma.scenario.upsert({
+      where: { id: DEFAULT_SCENARIO_ID },
+      update: {
+        profileId: profile.id,
+        name: DEFAULT_SCENARIO_NAME,
+        type: "base",
+        isDefault: true,
+      },
+      create: {
+        id: DEFAULT_SCENARIO_ID,
+        profileId: profile.id,
+        name: DEFAULT_SCENARIO_NAME,
+        type: "base",
+        isDefault: true,
+        snapshots: {
+          create: buildSnapshotCreateInput(
+            DEFAULT_SCENARIO_ID,
+            DEFAULT_FINANCIAL,
+            DEFAULT_HAPPINESS,
+            {},
+            "now",
+          ),
+        },
+      },
+    });
+
+    profile = await prisma.profile.findUniqueOrThrow({
+      where: { id: profile.id },
       include: {
         settings: true,
         scenarios: {
