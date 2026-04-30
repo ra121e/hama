@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useCallback, useRef } from "react";
+import { useMemo, useCallback, useRef, useEffect } from "react";
 import { AllCommunityModule, ModuleRegistry } from "ag-grid-community";
 import { AgGridReact } from "ag-grid-react";
 import type { ColDef, GridReadyEvent, GridApi } from "ag-grid-community";
@@ -29,12 +29,34 @@ const { rows, columns, isLoading, error, savePeriodValue } =
 useFinancialSpreadsheet(scenarioId);
 
 const gridApiRef = useRef<GridApi | null>(null);
+const gridContainerRef = useRef<HTMLDivElement>(null);
+const scrollPositionRef = useRef<{ horizontal: number; vertical: number }>({ horizontal: 0, vertical: 0 });
 
 const handleGridReady = useCallback((event: GridReadyEvent) => {
 	gridApiRef.current = event.api;
 
-	// Auto-size all columns to fit content initially (allow horizontal scrollbar)
-	event.api.autoSizeColumns([], false);
+	// Do not auto-size all columns on grid ready — resizing can reset scroll position
+
+	// Attempt to restore DOM scroll position and focus/visible column
+	if (gridContainerRef.current) {
+		try {
+			const viewport = gridContainerRef.current.querySelector('.ag-body-viewport') as HTMLElement | null;
+			if (viewport && (scrollPositionRef.current.horizontal || scrollPositionRef.current.vertical)) {
+				// restore DOM scroll
+				setTimeout(() => {
+					try {
+						viewport.scrollLeft = scrollPositionRef.current.horizontal;
+						viewport.scrollTop = scrollPositionRef.current.vertical;
+					} catch {
+						// ignore
+					}
+				}, 50);
+			}
+		} catch {
+			// ignore
+		}
+
+	}
 }, []);
 
 // Flatten hierarchical rows and prepare data for ag-Grid
@@ -98,6 +120,27 @@ traverse(rows);
 return result;
 }, [rows, columns]);
 
+// Restore scroll position after data updates
+useEffect(() => {
+	const timeoutId = setTimeout(() => {
+		// restore DOM scroll if available
+		try {
+			if (gridContainerRef.current) {
+				const viewport = gridContainerRef.current.querySelector('.ag-body-viewport') as HTMLElement | null;
+				if (viewport) {
+					viewport.scrollLeft = scrollPositionRef.current.horizontal;
+					viewport.scrollTop = scrollPositionRef.current.vertical;
+				}
+			}
+		} catch {
+			// ignore
+		}
+
+	}, 80);
+
+	return () => clearTimeout(timeoutId);
+}, [preparedRowData]);
+
 // Build column definitions for ag-Grid
 const columnDefs = useMemo<ColDef[]>(() => {
 const cols: ColDef[] = [
@@ -147,20 +190,43 @@ const value = params.value;
 if (value === null || value === undefined || value === 0) return "";
 return formatCurrency(value);
 },
-onCellValueChanged: async (event) => {
+				onCellValueChanged: async (event) => {
 const row = event.data as RowData;
 const newValue = Number(event.newValue) || 0;
 
 if (!row.id) return;
 
-await savePeriodValue(row.id, col.periodMonths, newValue);
-// After updating data, auto-size this column to fit new content
-try {
-	const colId = col.id;
-	gridApiRef.current?.autoSizeColumns([colId], false);
+// Keep a DOM scroll fallback as well (use ag-grid body viewport)
+if (gridContainerRef.current) {
+	try {
+		const viewport = gridContainerRef.current.querySelector('.ag-body-viewport') as HTMLElement | null;
+		if (viewport) {
+			scrollPositionRef.current = {
+				horizontal: viewport.scrollLeft,
+				vertical: viewport.scrollTop,
+			};
+		}
 	} catch {
-	// ignore
+		// ignore
+	}
 }
+
+await savePeriodValue(row.id, col.periodMonths, newValue);
+
+// Re-apply exact scroll position after async save to keep viewport stable
+setTimeout(() => {
+	try {
+		if (gridContainerRef.current) {
+			const viewport = gridContainerRef.current.querySelector('.ag-body-viewport') as HTMLElement | null;
+			if (viewport) {
+				viewport.scrollLeft = scrollPositionRef.current.horizontal;
+				viewport.scrollTop = scrollPositionRef.current.vertical;
+			}
+		}
+	} catch {
+		// ignore
+	}
+}, 0);
 },
 cellClass: (params) => {
 return params.data?.isAutoCalc ? "ag-cell-readonly" : "";
@@ -186,7 +252,7 @@ cellStyle: { backgroundColor: "rgb(219, 234, 254)" },
 return cols;
 }, [columns, savePeriodValue]);
 
-if (isLoading) {
+if (isLoading && preparedRowData.length === 0) {
 return (
 <div className="flex justify-center items-center py-12 h-96">
 <p className="text-muted-foreground">データを読み込み中...</p>
@@ -217,13 +283,13 @@ return (
 }
 
 return (
-	<div className="w-full" style={{ "--ag-font-size": "13px" } as React.CSSProperties}>
+	<div className="w-full" style={{ "--ag-font-size": "13px" } as React.CSSProperties} ref={gridContainerRef}>
 		<div className="ag-theme-quartz w-full">
 			<AgGridReact
-				domLayout="autoHeight"
 				columnDefs={columnDefs}
 				rowData={preparedRowData}
 				onGridReady={handleGridReady}
+				domLayout="autoHeight"
 				rowHeight={36}
 				defaultColDef={{
 					resizable: true,
