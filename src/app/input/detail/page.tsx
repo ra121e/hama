@@ -38,7 +38,7 @@ export default function DetailInputPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="overflow-auto">
+            <div className="h-96 overflow-auto">
               <FinancialSpreadsheet scenarioId={selectedScenarioId} />
             </div>
           </CardContent>
