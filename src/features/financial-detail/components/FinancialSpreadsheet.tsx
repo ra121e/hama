@@ -3,7 +3,7 @@
 import { useMemo, useCallback, useRef } from "react";
 import { AllCommunityModule, ModuleRegistry } from "ag-grid-community";
 import { AgGridReact } from "ag-grid-react";
-import type { ColDef, GridReadyEvent, GridApi, ColumnApi } from "ag-grid-community";
+import type { ColDef, GridReadyEvent, GridApi } from "ag-grid-community";
 import { useFinancialSpreadsheet, type SpreadsheetRow } from "@/features/financial-detail/hooks/useFinancialSpreadsheet";
 import { formatCurrency } from "@/shared/lib/formatter";
 
@@ -28,17 +28,12 @@ const { rows, columns, isLoading, error, updateEntry, createEntry } =
 useFinancialSpreadsheet(scenarioId);
 
 const gridApiRef = useRef<GridApi | null>(null);
-const columnApiRef = useRef<ColumnApi | null>(null);
 
 const handleGridReady = useCallback((event: GridReadyEvent) => {
 	gridApiRef.current = event.api;
-	columnApiRef.current = event.columnApi;
 
 	// Auto-size all columns to fit content initially (allow horizontal scrollbar)
-	const allColIds = event.columnApi.getAllColumns()?.map((c) => c.getColId()) ?? [];
-	if (allColIds.length) {
-		event.columnApi.autoSizeColumns(allColIds, false);
-	}
+	event.api.autoSizeColumns([], false);
 }, []);
 
 // Flatten hierarchical rows and prepare data for ag-Grid
@@ -151,8 +146,8 @@ await createEntry(row.id, col.yearMonth, newValue);
 // After updating data, auto-size this column to fit new content
 try {
 	const colId = col.yearMonth as string;
-	event.columnApi?.autoSizeColumns([colId], false);
-} catch (e) {
+	gridApiRef.current?.autoSizeColumns([colId], false);
+	} catch {
 	// ignore
 }
 },

@@ -37,6 +37,9 @@ const toFinancialItemPayload = (item: {
 
 const ensureLargeRoots = async (profileId: string) => {
 	await prisma.$transaction(async (tx) => {
+		// 同一プロファイルへの同時GETでルート項目が二重生成されないようにロックする
+		await tx.$executeRaw`SELECT 1 FROM "Profile" WHERE id = ${profileId} FOR UPDATE`;
+
 		// トランザクション内で最新のルート項目を読み込む
 		const roots = await tx.financialItem.findMany({
 			where: {
@@ -52,7 +55,7 @@ const ensureLargeRoots = async (profileId: string) => {
 			// Handle duplicates: Keep the first one, delete others
 			if (existingItems.length > 1) {
 				const [keepItem, ...deleteItems] = existingItems;
-				
+
 				// Delete duplicate items and their descendants
 				for (const item of deleteItems) {
 					const allDescendants = roots
@@ -63,25 +66,25 @@ const ensureLargeRoots = async (profileId: string) => {
 							while (queue.length > 0) {
 								const currentId = queue.shift();
 								if (!currentId) continue;
-								
+
 								const children = roots.filter((c) => c.parentId === currentId);
 								result.push(...children.map((c) => c.id));
 								queue.push(...children.map((c) => c.id));
 							}
 							return result;
 						});
-					
+
 					if (allDescendants.length > 0) {
 						await tx.financialItem.deleteMany({
 							where: { id: { in: allDescendants } },
 						});
 					}
-					
+
 					await tx.financialItem.delete({
 						where: { id: item.id },
 					});
 				}
-				
+
 				// Update the kept item
 				if (keepItem.name !== root.label || keepItem.sortOrder !== index) {
 					await tx.financialItem.update({
