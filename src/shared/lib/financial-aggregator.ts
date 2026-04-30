@@ -59,11 +59,39 @@ function addMonths(yearMonth: string, months: number): string {
   return formatYearMonth(date);
 }
 
+function buildMonthlyMap(entries: FinancialEntry[]): Map<string, number> {
+  return new Map(entries.map((entry) => [entry.yearMonth, entry.value]));
+}
+
+function sumMonthlyWindow(
+  entries: FinancialEntry[],
+  startMonth: string,
+  months: number
+): {
+  sum: number;
+  hasAnyData: boolean;
+} {
+  const monthlyMap = buildMonthlyMap(entries);
+  let sum = 0;
+  let hasAnyData = false;
+
+  for (let i = 0; i < months; i++) {
+    const yearMonth = addMonths(startMonth, i);
+    const value = monthlyMap.get(yearMonth);
+    if (value !== undefined) {
+      sum += value;
+      hasAnyData = true;
+    }
+  }
+
+  return { sum, hasAnyData };
+}
+
 /**
  * 指定された時点（now, 5y, 10y, 20y）に対応する月次データを取得
  *
  * 時点計算：
- * - now：baseMonth（データ内の最新月）
+ * - now：baseMonth（データ内の起点月）
  * - 5y：baseMonth + 60ヶ月
  * - 10y：baseMonth + 120ヶ月
  * - 20y：baseMonth + 240ヶ月
@@ -86,9 +114,11 @@ export function aggregateToTimepoint(
     return 0;
   }
 
-  // データ内の最新月を基準とする
-  const baseMonth = entries.reduce((max, e) => {
-    return monthDiff(e.yearMonth, max) > 0 ? e.yearMonth : max;
+  // データ内の起点月を基準とする
+  // financial-detail の入力は現在月から未来へ並ぶため、
+  // 5y / 10y / 20y はこの起点からの相対月数で解釈する。
+  const baseMonth = entries.reduce((min, e) => {
+    return monthDiff(e.yearMonth, min) < 0 ? e.yearMonth : min;
   }, entries[0].yearMonth);
 
   // now時点の場合は常に直接計算
@@ -147,18 +177,14 @@ export function aggregateToTimepoint(
     return latestEntry ? latestEntry.value : 0;
   } else {
     // フロー系：
-    // - 対象年のデータがあれば12ヶ月合計を使用
-    // - なければ、直近12ヶ月の平均値を返す（将来推定）
-    const targetYear = targetMonth.substring(0, 4);
-    const targetYearData = entries
-      .filter((e) => e.yearMonth.substring(0, 4) === targetYear)
-      .reduce((sum, e) => sum + e.value, 0);
+    // - 対象時点から連続12ヶ月の合計を返す
+    // - その窓にデータがない場合のみ、直近12ヶ月の平均を年額換算して返す
+    const window = sumMonthlyWindow(entries, targetMonth, 12);
 
-    if (targetYearData !== 0) {
-      return targetYearData;
+    if (window.hasAnyData) {
+      return window.sum;
     }
 
-    // 対象年のデータが存在しない場合、直近12ヶ月の平均を返す
     const recent12Months = getMonthlyEntries(entries, 12);
     if (recent12Months.length === 0) {
       return 0;

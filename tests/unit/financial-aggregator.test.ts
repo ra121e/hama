@@ -178,6 +178,38 @@ describe("financial-aggregator", () => {
       expect(result["5y"]).toBe(result["10y"]);
       expect(result["10y"]).toBe(result["20y"]);
     });
+
+    it("将来データがある場合は 5y / 10y / 20y で別々の12ヶ月窓を集約する", () => {
+      const entries: FinancialEntry[] = [];
+
+      const pushYear = (year: number, baseValue: number) => {
+        for (let i = 0; i < 12; i++) {
+          const month = String(i + 1).padStart(2, "0");
+          entries.push({
+            id: `${year}-${month}`,
+            scenarioId: "scenario-1",
+            itemId: "item-income",
+            yearMonth: `${year}-${month}`,
+            value: baseValue,
+            isExpanded: false,
+            memo: null,
+          });
+        }
+      };
+
+      for (let year = 2024; year <= 2044; year++) {
+        const value = year === 2029 ? 1000 : year === 2034 ? 2000 : year === 2044 ? 3000 : 100;
+        pushYear(year, value);
+      }
+
+      const result = aggregateTo4Timepoints(entries, "flow");
+
+      expect(result["5y"]).toBe(1000 * 12);
+      expect(result["10y"]).toBe(2000 * 12);
+      expect(result["20y"]).toBe(3000 * 12);
+      expect(result["5y"]).not.toBe(result["10y"]);
+      expect(result["10y"]).not.toBe(result["20y"]);
+    });
   });
 
   describe("エッジケース", () => {
