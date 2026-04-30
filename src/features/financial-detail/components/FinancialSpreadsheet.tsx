@@ -142,6 +142,14 @@ export function FinancialSpreadsheet({ scenarioId, onYearlyExpanded, onSaveError
 
 					return style;
 				},
+				tooltipField: null,
+				tooltipValueGetter: (params) => {
+					const level = params.data?.level || "";
+					if (level === "large") {
+						return "中項目の合計（自動計算）";
+					}
+					return "";
+				},
 			},
 		];
 
@@ -157,7 +165,21 @@ export function FinancialSpreadsheet({ scenarioId, onYearlyExpanded, onSaveError
 						if (value === null || value === undefined || value === 0) return "";
 						return formatCurrency(value);
 					},
-					cellStyle: { backgroundColor: "rgb(219, 234, 254)" },
+					cellStyle: (params) => {
+						const level = params.data?.level || "";
+						// 大項目の場合は背景色を統一
+						if (level === "large") {
+							return { backgroundColor: "rgb(241, 245, 249)" };
+						}
+						return { backgroundColor: "rgb(219, 234, 254)" };
+					},
+					tooltipValueGetter: (params) => {
+						const level = params.data?.level || "";
+						if (level === "large") {
+							return "中項目の合計（自動計算）";
+						}
+						return "";
+					},
 				});
 				return;
 			}
@@ -166,7 +188,14 @@ export function FinancialSpreadsheet({ scenarioId, onYearlyExpanded, onSaveError
 				field: col.id,
 				headerName: col.label,
 				width: col.type === "month" ? 90 : 120,
-				editable: (params) => !params.data?.isAutoCalc,
+				editable: (params) => {
+					// 大項目（level === 'large'）は常に編集不可
+					if (params.data?.level === "large") {
+						return false;
+					}
+					// 自動計算セルも編集不可
+					return !params.data?.isAutoCalc;
+				},
 				cellEditor: "agNumberCellEditor",
 				cellEditorParams: {
 					min: 0,
@@ -177,10 +206,27 @@ export function FinancialSpreadsheet({ scenarioId, onYearlyExpanded, onSaveError
 					if (value === null || value === undefined || value === 0) return "";
 					return formatCurrency(value);
 				},
-				cellStyle: col.type === "fiveYear"
-					? { backgroundColor: "rgb(255, 247, 237)", fontWeight: "600" }
-					: undefined,
+				cellStyle: (params) => {
+					const baseStyle = col.type === "fiveYear"
+						? { backgroundColor: "rgb(255, 247, 237)", fontWeight: "600" }
+						: {};
+					const level = params.data?.level || "";
+					if (level === "large") {
+						return {
+							...baseStyle,
+							backgroundColor: "rgb(241, 245, 249)",
+						};
+					}
+					return baseStyle;
+				},
 				headerClass: col.type === "fiveYear" ? "five-year-column-header" : undefined,
+				tooltipValueGetter: (params) => {
+					const level = params.data?.level || "";
+					if (level === "large") {
+						return "中項目の合計（自動計算）";
+					}
+					return "";
+				},
 				onCellValueChanged: async (event) => {
 					const row = event.data as RowData;
 					const newValue = Number(event.newValue) || 0;
