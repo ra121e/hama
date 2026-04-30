@@ -3,6 +3,7 @@ import type { FinancialAutoCalc, FinancialItemCategory } from "@/entities/financ
 export type ExpandYearlyToMonthlyInput = {
 	periodMonths: string[];
 	yearlyValue: number;
+	years?: number;
 	category: FinancialItemCategory;
 	autoCalc: FinancialAutoCalc;
 	rate?: number | null;
@@ -16,6 +17,14 @@ export type ExpandedMonthlyValue = {
 };
 
 const roundToInteger = (value: number) => Math.round(value);
+
+const normalizeYears = (years?: number) => {
+	if (!years || !Number.isFinite(years) || years < 1) {
+		return 1;
+	}
+
+	return Math.floor(years);
+};
 
 const distributeEvenly = (months: string[], yearlyValue: number) => {
 	if (months.length === 0) {
@@ -56,6 +65,34 @@ const distributeToEventMonths = (months: string[], yearlyValue: number, eventMon
 	return months.map((yearMonth) => valueByMonth.get(yearMonth) ?? 0);
 };
 
+const expandBaseYearPattern = (
+	yearlyValue: number,
+	category: FinancialItemCategory,
+	autoCalc: FinancialAutoCalc,
+	rate?: number | null,
+	eventMonths?: number[],
+) => {
+	const baseMonths = Array.from({ length: 12 }, (_, index) => `base-${String(index + 1).padStart(2, "0")}`);
+
+	if (autoCalc !== "none") {
+		return expandWithAutoCalc(baseMonths, yearlyValue, autoCalc, rate);
+	}
+
+	if (category === "expense" && eventMonths && eventMonths.length > 0) {
+		return distributeToEventMonths(baseMonths, yearlyValue, eventMonths);
+	}
+
+	return distributeEvenly(baseMonths, yearlyValue);
+};
+
+const repeatAnnualPattern = (months: string[], annualPattern: number[]) => {
+	if (annualPattern.length !== 12 || months.length % 12 !== 0) {
+		return months.map(() => 0);
+	}
+
+	return months.map((_, index) => annualPattern[index % 12] ?? 0);
+};
+
 const expandWithAutoCalc = (months: string[], yearlyValue: number, autoCalc: FinancialAutoCalc, rate?: number | null) => {
 	if (months.length === 0) {
 		return [] as number[];
@@ -91,19 +128,26 @@ const expandWithAutoCalc = (months: string[], yearlyValue: number, autoCalc: Fin
 export const expandYearlyToMonthly = ({
 	periodMonths,
 	yearlyValue,
+	years,
 	category,
 	autoCalc,
 	rate,
 	eventMonths,
 }: ExpandYearlyToMonthlyInput): ExpandedMonthlyValue[] => {
-	let monthlyValues: number[];
+	const normalizedYears = normalizeYears(years);
+	const expectedMonths = normalizedYears * 12;
 
-	if (autoCalc !== "none") {
-		monthlyValues = expandWithAutoCalc(periodMonths, yearlyValue, autoCalc, rate);
-	} else if (category === "expense" && eventMonths && eventMonths.length > 0) {
-		monthlyValues = distributeToEventMonths(periodMonths, yearlyValue, eventMonths);
+	if (periodMonths.length !== expectedMonths) {
+		throw new Error(`periodMonths must contain ${expectedMonths} months for ${normalizedYears} year expansion`);
+	}
+
+	let monthlyValues: number[];
+	const annualPattern = expandBaseYearPattern(yearlyValue, category, autoCalc, rate, eventMonths);
+
+	if (normalizedYears === 1) {
+		monthlyValues = annualPattern;
 	} else {
-		monthlyValues = distributeEvenly(periodMonths, yearlyValue);
+		monthlyValues = repeatAnnualPattern(periodMonths, annualPattern);
 	}
 
 	return periodMonths.map((yearMonth, index) => ({

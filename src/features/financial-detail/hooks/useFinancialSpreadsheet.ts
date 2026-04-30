@@ -250,13 +250,21 @@ export function useFinancialSpreadsheet(scenarioId: string | null) {
 			setState((current) => ({ ...current, isSaving: true, error: null }));
 
 			try {
-				const isYearlyColumn = options?.columnType === "year" && periodMonths.length === 12;
-				const isExpanded = isYearlyColumn;
+				const isAnnualExpansionColumn =
+					(options?.columnType === "year" || options?.columnType === "fiveYear") &&
+					periodMonths.length > 0 &&
+					periodMonths.length % 12 === 0;
+				const years = isAnnualExpansionColumn ? periodMonths.length / 12 : 1;
 
-				const entries = isYearlyColumn
+				if (!Number.isFinite(value)) {
+					throw new Error("入力値が不正です");
+				}
+
+				const entries = isAnnualExpansionColumn
 					? expandYearlyToMonthly({
 						periodMonths,
 						yearlyValue: value,
+						years,
 						category: options?.category ?? "expense",
 						autoCalc: options?.autoCalc ?? "none",
 						rate: options?.rate,
@@ -265,7 +273,7 @@ export function useFinancialSpreadsheet(scenarioId: string | null) {
 					: periodMonths.map((yearMonth) => ({
 						yearMonth,
 						value,
-						isExpanded,
+						isExpanded: false,
 					}));
 
 				const response = await fetch("/api/financial-entries", {
@@ -289,7 +297,7 @@ export function useFinancialSpreadsheet(scenarioId: string | null) {
 				setState((current) => ({ ...current, isSaving: false }));
 				return {
 					ok: true,
-					expandedCount: isYearlyColumn ? entries.length : 0,
+					expandedCount: isAnnualExpansionColumn ? entries.length : 0,
 				};
 			} catch (error) {
 				const message = error instanceof Error ? error.message : "Error saving period value";

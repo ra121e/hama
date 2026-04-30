@@ -56,4 +56,24 @@ describe("expandYearlyToMonthly", () => {
 		expect(result[0].value).toBeGreaterThan(120000);
 		expect(result[11].value).toBeGreaterThan(result[0].value);
 	});
+
+	it("expands five-year annual input across 60 months", () => {
+		const sixtyMonths = Array.from({ length: 60 }, (_, index) => {
+			const year = 2035 + Math.floor(index / 12);
+			const month = String((index % 12) + 1).padStart(2, "0");
+			return `${year}-${month}`;
+		});
+
+		const result = expandYearlyToMonthly({
+			periodMonths: sixtyMonths,
+			yearlyValue: 1200000,
+			years: 5,
+			category: "income",
+			autoCalc: "none",
+		});
+
+		expect(result).toHaveLength(60);
+		expect(result.every((entry) => entry.value === 100000)).toBe(true);
+		expect(result.every((entry) => entry.isExpanded)).toBe(true);
+	});
 });

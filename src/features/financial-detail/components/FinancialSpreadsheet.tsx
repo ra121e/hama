@@ -177,6 +177,10 @@ export function FinancialSpreadsheet({ scenarioId, onYearlyExpanded, onSaveError
 					if (value === null || value === undefined || value === 0) return "";
 					return formatCurrency(value);
 				},
+				cellStyle: col.type === "fiveYear"
+					? { backgroundColor: "rgb(255, 247, 237)", fontWeight: "600" }
+					: undefined,
+				headerClass: col.type === "fiveYear" ? "five-year-column-header" : undefined,
 				onCellValueChanged: async (event) => {
 					const row = event.data as RowData;
 					const newValue = Number(event.newValue) || 0;

@@ -44,9 +44,14 @@ export default function DetailInputPage() {
               <FinancialSpreadsheet
                 scenarioId={selectedScenarioId}
                 onYearlyExpanded={(expandedCount) => {
+                  const description =
+                    expandedCount === 60
+                      ? "年額を60ヶ月分に展開して保存しました。"
+                      : `${expandedCount}ヶ月分を展開して保存しました。`;
+
                   toast({
                     title: "保存しました",
-                    description: `${expandedCount}ヶ月分を展開して保存しました。`,
+                    description,
                   });
                 }}
                 onSaveError={(message) => {

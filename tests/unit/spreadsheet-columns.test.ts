@@ -12,6 +12,7 @@ describe("spreadsheet columns", () => {
 		expect(columns[12]?.type).toBe("total");
 		expect(columns[25]?.type).toBe("total");
 		expect(columns[38]?.type).toBe("total");
+		expect(columns.find((column) => column.type === "fiveYear")?.label).toContain("5年単位（年額）");
 	});
 
 	it("calculates subtotal columns as a sum and the grand total from all entries", () => {

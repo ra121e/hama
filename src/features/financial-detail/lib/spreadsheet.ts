@@ -78,7 +78,7 @@ export const generateSpreadsheetColumns = (baseDate = new Date()): SpreadsheetCo
 
 		columns.push({
 			id: `five_year_${startYear}`,
-			label: `${startYear}-${endYear}`,
+			label: `5年単位（年額） ${startYear}-${endYear}`,
 			yearMonth: null,
 			periodMonths,
 			type: "fiveYear",
