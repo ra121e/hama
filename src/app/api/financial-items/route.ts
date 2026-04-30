@@ -36,20 +36,75 @@ const toFinancialItemPayload = (item: {
 });
 
 const ensureLargeRoots = async (profileId: string) => {
-	const roots = await prisma.financialItem.findMany({
-		where: {
-			profileId,
-			level: "large",
-			parentId: null,
-		},
-		orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
-	});
-
 	await prisma.$transaction(async (tx) => {
-		for (const [index, root] of FIXED_ROOT_FINANCIAL_ITEMS.entries()) {
-			const existing = roots.find((item) => item.category === root.category);
+		// トランザクション内で最新のルート項目を読み込む
+		const roots = await tx.financialItem.findMany({
+			where: {
+				profileId,
+				level: "large",
+				parentId: null,
+			},
+		});
 
-			if (!existing) {
+		for (const [index, root] of FIXED_ROOT_FINANCIAL_ITEMS.entries()) {
+			const existingItems = roots.filter((item) => item.category === root.category);
+
+			// Handle duplicates: Keep the first one, delete others
+			if (existingItems.length > 1) {
+				const [keepItem, ...deleteItems] = existingItems;
+				
+				// Delete duplicate items and their descendants
+				for (const item of deleteItems) {
+					const allDescendants = roots
+						.filter((r) => r.profileId === profileId)
+						.flatMap((r) => {
+							const queue = [r.id];
+							const result: string[] = [];
+							while (queue.length > 0) {
+								const currentId = queue.shift();
+								if (!currentId) continue;
+								
+								const children = roots.filter((c) => c.parentId === currentId);
+								result.push(...children.map((c) => c.id));
+								queue.push(...children.map((c) => c.id));
+							}
+							return result;
+						});
+					
+					if (allDescendants.length > 0) {
+						await tx.financialItem.deleteMany({
+							where: { id: { in: allDescendants } },
+						});
+					}
+					
+					await tx.financialItem.delete({
+						where: { id: item.id },
+					});
+				}
+				
+				// Update the kept item
+				if (keepItem.name !== root.label || keepItem.sortOrder !== index) {
+					await tx.financialItem.update({
+						where: { id: keepItem.id },
+						data: {
+							name: root.label,
+							sortOrder: index,
+						},
+					});
+				}
+			} else if (existingItems.length === 1) {
+				const existing = existingItems[0];
+				if (existing.name !== root.label || existing.sortOrder !== index) {
+					await tx.financialItem.update({
+						where: { id: existing.id },
+						data: {
+							name: root.label,
+							sortOrder: index,
+						},
+					});
+				}
+			} else {
+				// Create new item if none exists
 				await tx.financialItem.create({
 					data: {
 						profileId,
@@ -59,17 +114,6 @@ const ensureLargeRoots = async (profileId: string) => {
 						category: root.category,
 						autoCalc: "none",
 						rate: null,
-						sortOrder: index,
-					},
-				});
-				continue;
-			}
-
-			if (existing.name !== root.label || existing.sortOrder !== index) {
-				await tx.financialItem.update({
-					where: { id: existing.id },
-					data: {
-						name: root.label,
 						sortOrder: index,
 					},
 				});

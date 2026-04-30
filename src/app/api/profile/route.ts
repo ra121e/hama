@@ -71,30 +71,26 @@ const buildSnapshotCreateInput = (
   happinessMemo: HappinessMemoMap,
   timepoint: Timepoint,
 ) => {
-  const snapshots: Prisma.SnapshotCreateManyInput[] = [
+  const snapshots: Prisma.SnapshotCreateWithoutScenarioInput[] = [
     {
-      scenarioId,
       timepoint,
       categoryId: "financial",
       itemId: "fin_assets",
       value: financial.fin_assets,
     },
     {
-      scenarioId,
       timepoint,
       categoryId: "financial",
       itemId: "fin_income",
       value: financial.fin_income,
     },
     {
-      scenarioId,
       timepoint,
       categoryId: "financial",
       itemId: "fin_expense",
       value: financial.fin_expense,
     },
     {
-      scenarioId,
       timepoint,
       categoryId: "happiness",
       itemId: "hap_time",
@@ -102,7 +98,6 @@ const buildSnapshotCreateInput = (
       memo: happinessMemo.hap_time,
     },
     {
-      scenarioId,
       timepoint,
       categoryId: "happiness",
       itemId: "hap_health",
@@ -110,7 +105,6 @@ const buildSnapshotCreateInput = (
       memo: happinessMemo.hap_health,
     },
     {
-      scenarioId,
       timepoint,
       categoryId: "happiness",
       itemId: "hap_relation",
@@ -118,7 +112,6 @@ const buildSnapshotCreateInput = (
       memo: happinessMemo.hap_relation,
     },
     {
-      scenarioId,
       timepoint,
       categoryId: "happiness",
       itemId: "hap_selfreal",
@@ -255,15 +248,13 @@ const fetchProfileBundle = async (preferredScenarioId?: string) => {
             type: "base",
             isDefault: true,
             snapshots: {
-              createMany: {
-                data: buildSnapshotCreateInput(
-                  DEFAULT_SCENARIO_ID,
-                  DEFAULT_FINANCIAL,
-                  DEFAULT_HAPPINESS,
-                  {},
-                  "now",
-                ),
-              },
+              create: buildSnapshotCreateInput(
+                DEFAULT_SCENARIO_ID,
+                DEFAULT_FINANCIAL,
+                DEFAULT_HAPPINESS,
+                {},
+                "now",
+              ),
             },
           },
         },
@@ -415,7 +406,10 @@ const saveProfile = async (request: Request) => {
         body.profile.happiness,
         body.profile.happinessMemo ?? {},
         timepoint,
-      ),
+      ).map((snapshot) => ({
+        ...snapshot,
+        scenarioId: scenario.id,
+      })),
     });
   });
 
