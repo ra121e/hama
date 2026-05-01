@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { FinancialItem, FinancialEntry } from "../../src/entities/financial-item";
+import { aggregateBigCategory, aggregateRowEntriesByCategory, type AggregatableRowLike } from "../../src/shared/lib/financial-aggregator";
 
 /**
  * 大項目（level === 'large'）の合計計算ロジックをテスト
@@ -178,5 +179,39 @@ describe("大項目の合計計算", () => {
 
 		expect(largeItemBgColor).not.toBe(mediumItemBgColor);
 		expect(mediumItemBgColor).not.toBe(smallItemBgColor);
+	});
+
+	it("資産・負債の大項目は期末残高を返す", () => {
+		const assetEntries: FinancialEntry[] = [
+			{ id: "a1", scenarioId: "s", itemId: "asset-medium", yearMonth: "2026-04", value: 1000000, isExpanded: false, memo: null },
+			{ id: "a2", scenarioId: "s", itemId: "asset-medium", yearMonth: "2026-05", value: 1200000, isExpanded: false, memo: null },
+			{ id: "a3", scenarioId: "s", itemId: "asset-medium", yearMonth: "2026-06", value: 1500000, isExpanded: false, memo: null },
+		];
+
+		expect(aggregateBigCategory(assetEntries, "asset", ["2026-04", "2026-05", "2026-06"])).toBe(1500000);
+		expect(aggregateBigCategory(assetEntries, "asset", [])).toBe(1500000);
+	});
+
+	it("資産・負債の中項目も子項目の残高を集約する", () => {
+		const leaf: AggregatableRowLike = {
+			level: "small",
+			category: "asset",
+			children: [],
+			entries: new Map([
+				["2026-04", { id: "leaf-1", scenarioId: "s", itemId: "small-asset", yearMonth: "2026-04", value: 100, isExpanded: false, memo: null }],
+				["2026-05", { id: "leaf-2", scenarioId: "s", itemId: "small-asset", yearMonth: "2026-05", value: 150, isExpanded: false, memo: null }],
+			]),
+		};
+
+		const medium: AggregatableRowLike = {
+			level: "medium",
+			category: "asset",
+			children: [leaf],
+			entries: new Map(),
+		};
+
+		const aggregated = aggregateRowEntriesByCategory(medium);
+		expect(aggregated.get("2026-04")?.value).toBe(100);
+		expect(aggregated.get("2026-05")?.value).toBe(150);
 	});
 });

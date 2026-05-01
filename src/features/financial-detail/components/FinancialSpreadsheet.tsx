@@ -3,10 +3,11 @@
 import { useMemo, useCallback, useRef, useEffect } from "react";
 import { AllCommunityModule, ModuleRegistry } from "ag-grid-community";
 import { AgGridReact } from "ag-grid-react";
-import type { ColDef, GridReadyEvent, GridApi } from "ag-grid-community";
+import type { CellStyle, ColDef, GridReadyEvent, GridApi } from "ag-grid-community";
 import { useFinancialSpreadsheet, type SpreadsheetRow } from "@/features/financial-detail/hooks/useFinancialSpreadsheet";
 import { calculateSpreadsheetColumnValue } from "@/features/financial-detail/lib/spreadsheet";
 import { formatCurrency } from "@/shared/lib/formatter";
+import { aggregateBigCategory } from "@/shared/lib/financial-aggregator";
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
@@ -64,6 +65,7 @@ export function FinancialSpreadsheet({ scenarioId, onYearlyExpanded, onSaveError
 
 		const traverse = (items: SpreadsheetRow[]) => {
 			items.forEach((item) => {
+				const isStockCategory = item.category === "asset" || item.category === "liability";
 				const row: RowData = {
 					id: item.id,
 					name: item.name,
@@ -78,14 +80,14 @@ export function FinancialSpreadsheet({ scenarioId, onYearlyExpanded, onSaveError
 				};
 
 				columns.forEach((col) => {
-					row[col.id] = calculateSpreadsheetColumnValue(item.entries, col);
+					row[col.id] = isStockCategory
+						? aggregateBigCategory(item.entries, item.category, col.periodMonths)
+						: calculateSpreadsheetColumnValue(item.entries, col);
 				});
 
-				let total = 0;
-				item.entries.forEach((entry) => {
-					total += entry.value;
-				});
-				row.total = total;
+				row.total = isStockCategory
+					? aggregateBigCategory(item.entries, item.category, [])
+					: Array.from(item.entries.values()).reduce((sum, entry) => sum + entry.value, 0);
 
 				result.push(row);
 
@@ -126,11 +128,13 @@ export function FinancialSpreadsheet({ scenarioId, onYearlyExpanded, onSaveError
 				pinned: "left",
 				cellStyle: (params) => {
 					const level = params.data?.level || "";
-					const style: { [key: string]: string } = {};
+					const category = params.data?.category || "";
+					const isStockCategory = category === "asset" || category === "liability";
+					const style: CellStyle = {};
 
 					if (level === "large") {
 						style.fontWeight = "bold";
-						style.backgroundColor = "rgb(241, 245, 249)";
+						style.backgroundColor = isStockCategory ? "rgb(239, 246, 255)" : "rgb(241, 245, 249)";
 						style.paddingLeft = "8px";
 					} else if (level === "medium") {
 						style.paddingLeft = "32px";
@@ -142,11 +146,13 @@ export function FinancialSpreadsheet({ scenarioId, onYearlyExpanded, onSaveError
 
 					return style;
 				},
-				tooltipField: null,
+				tooltipField: undefined,
 				tooltipValueGetter: (params) => {
 					const level = params.data?.level || "";
+					const category = params.data?.category || "";
+					const isStockCategory = category === "asset" || category === "liability";
 					if (level === "large") {
-						return "中項目の合計（自動計算）";
+						return isStockCategory ? "残高合計（自動計算）" : "中項目の合計（自動計算）";
 					}
 					return "";
 				},
@@ -167,16 +173,19 @@ export function FinancialSpreadsheet({ scenarioId, onYearlyExpanded, onSaveError
 					},
 					cellStyle: (params) => {
 						const level = params.data?.level || "";
-						// 大項目の場合は背景色を統一
+						const category = params.data?.category || "";
+						const isStockCategory = category === "asset" || category === "liability";
 						if (level === "large") {
-							return { backgroundColor: "rgb(241, 245, 249)" };
+							return { backgroundColor: isStockCategory ? "rgb(239, 246, 255)" : "rgb(241, 245, 249)" };
 						}
 						return { backgroundColor: "rgb(219, 234, 254)" };
 					},
 					tooltipValueGetter: (params) => {
 						const level = params.data?.level || "";
+						const category = params.data?.category || "";
+						const isStockCategory = category === "asset" || category === "liability";
 						if (level === "large") {
-							return "中項目の合計（自動計算）";
+							return isStockCategory ? "残高合計（自動計算）" : "中項目の合計（自動計算）";
 						}
 						return "";
 					},
@@ -206,18 +215,20 @@ export function FinancialSpreadsheet({ scenarioId, onYearlyExpanded, onSaveError
 					if (value === null || value === undefined || value === 0) return "";
 					return formatCurrency(value);
 				},
-				cellStyle: (params) => {
-					const baseStyle = col.type === "fiveYear"
+				cellStyle: (params): CellStyle | undefined => {
+					const baseStyle: CellStyle = col.type === "fiveYear"
 						? { backgroundColor: "rgb(255, 247, 237)", fontWeight: "600" }
 						: {};
 					const level = params.data?.level || "";
+					const category = params.data?.category || "";
+					const isStockCategory = category === "asset" || category === "liability";
 					if (level === "large") {
 						return {
 							...baseStyle,
-							backgroundColor: "rgb(241, 245, 249)",
+							backgroundColor: isStockCategory ? "rgb(239, 246, 255)" : "rgb(241, 245, 249)",
 						};
 					}
-					return baseStyle;
+					return Object.keys(baseStyle).length > 0 ? baseStyle : undefined;
 				},
 				headerClass: col.type === "fiveYear" ? "five-year-column-header" : undefined,
 				tooltipValueGetter: (params) => {

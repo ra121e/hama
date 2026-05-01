@@ -6,7 +6,7 @@ import { expandYearlyToMonthly } from "@/features/financial-detail/engine/expand
 import { useFinancialItems } from "@/features/financial-detail/hooks/useFinancialItems";
 import type { SpreadsheetColumn } from "@/features/financial-detail/lib/spreadsheet";
 import { generateSpreadsheetColumns } from "@/features/financial-detail/lib/spreadsheet";
-import { aggregateFinancialDataByTimepoints } from "@/shared/lib/financial-aggregator";
+import { aggregateFinancialDataByTimepoints, aggregateRowEntriesByCategory } from "@/shared/lib/financial-aggregator";
 import { useProfileStore } from "@/store/profileStore";
 export type { SpreadsheetColumn } from "@/features/financial-detail/lib/spreadsheet";
 
@@ -49,61 +49,6 @@ type LoadState = {
 	error: string | null;
 };
 
-/**
- * 大項目の場合、配下の全中項目・小項目の entries を集約する
- */
-const aggregateChildEntries = (row: SpreadsheetRow): Map<string, FinancialEntry> => {
-	if (row.level !== "large") {
-		return row.entries;
-	}
-
-	const aggregated = new Map<string, FinancialEntry>();
-	const allYearMonths = new Set<string>();
-
-	// 再帰的に全子要素の entries を集約
-	const traverse = (currentRow: SpreadsheetRow) => {
-		currentRow.entries.forEach((entry) => {
-			allYearMonths.add(entry.yearMonth);
-		});
-		currentRow.children.forEach((child) => {
-			traverse(child);
-		});
-	};
-
-	traverse(row);
-
-	// 各月度ごとに合計を計算
-	allYearMonths.forEach((yearMonth) => {
-		let totalValue = 0;
-
-		const collectValue = (currentRow: SpreadsheetRow) => {
-			const entry = currentRow.entries.get(yearMonth);
-			if (entry) {
-				totalValue += entry.value;
-			}
-			currentRow.children.forEach((child) => {
-				collectValue(child);
-			});
-		};
-
-		collectValue(row);
-
-		if (totalValue !== 0) {
-			aggregated.set(yearMonth, {
-				id: `${row.id}-agg-${yearMonth}`,
-				scenarioId: "",
-				itemId: row.id,
-				yearMonth,
-				value: totalValue,
-				isExpanded: false,
-				memo: null,
-			});
-		}
-	});
-
-	return aggregated;
-};
-
 const buildRowTree = (
 	items: FinancialItem[],
 	entries: FinancialEntry[],
@@ -142,8 +87,8 @@ const buildRowTree = (
 			children: buildRowTree(items, entries, item.id),
 		};
 
-		// 大項目の場合、配下の中項目の entries を集約
-		row.entries = aggregateChildEntries(row);
+		// 大項目、または資産・負債カテゴリの親項目の場合、配下の entries を集約
+		row.entries = aggregateRowEntriesByCategory(row);
 
 		return row;
 	});

@@ -38,7 +38,7 @@ const normalizeFinancialData = (financial: FinancialDataInput): FinancialData =>
 		};
 	}
 
-	if ("assets" in financial || "income" in financial || "expense" in financial) {
+	if ("assets" in financial && "income" in financial && "expense" in financial) {
 		return {
 			assets: safeNumber(financial.assets),
 			income: safeNumber(financial.income),
@@ -46,12 +46,29 @@ const normalizeFinancialData = (financial: FinancialDataInput): FinancialData =>
 		};
 	}
 
+	if ("fin_assets" in financial && "fin_income" in financial && "fin_expense" in financial) {
+		return {
+			assets: safeNumber(financial.fin_assets),
+			income: safeNumber(financial.fin_income),
+			expense: safeNumber(financial.fin_expense),
+		};
+	}
+
 	return {
-		assets: safeNumber(financial.fin_assets),
-		income: safeNumber(financial.fin_income),
-		expense: safeNumber(financial.fin_expense),
+		assets: 0,
+		income: 0,
+		expense: 0,
 	};
 };
+
+const normalizeSettings = (settings: Settings): Settings => ({
+	weightHappiness: safeNumber(settings.weightHappiness),
+	weightFinance: safeNumber(settings.weightFinance),
+	targetAssets: (() => {
+		const targetAssets = safeNumber(settings.targetAssets);
+		return targetAssets > 0 ? targetAssets : null;
+	})(),
+});
 
 /**
  * 財務健全性指数（0〜100にキャッピング）
@@ -59,6 +76,7 @@ const normalizeFinancialData = (financial: FinancialDataInput): FinancialData =>
  */
 export function calcFinanceScore(financial: FinancialDataInput, settings: Settings): number {
 	const normalizedFinancial = normalizeFinancialData(financial);
+	const normalizedSettings = normalizeSettings(settings);
 	const cashflowRatio =
 		normalizedFinancial.income > 0
 			? Math.max(0, (normalizedFinancial.income - normalizedFinancial.expense) / normalizedFinancial.income) * 100
@@ -66,8 +84,8 @@ export function calcFinanceScore(financial: FinancialDataInput, settings: Settin
 				? 100
 				: 0;
 	const assetRatio =
-		settings.targetAssets && settings.targetAssets > 0
-			? Math.min(100, (normalizedFinancial.assets / settings.targetAssets) * 100)
+		normalizedSettings.targetAssets && normalizedSettings.targetAssets > 0
+			? Math.min(100, (normalizedFinancial.assets / normalizedSettings.targetAssets) * 100)
 			: 50;
 	return (cashflowRatio + assetRatio) / 2;
 }
@@ -87,9 +105,10 @@ export function calcHappinessScore(happiness: HappinessData): number {
  * HAMAスコア（総合）
  */
 export function calcHamaScore(data: SnapshotData, settings: Settings): number {
-	const finScore = calcFinanceScore(data.financial, settings);
+	const normalizedSettings = normalizeSettings(settings);
+	const finScore = calcFinanceScore(data.financial, normalizedSettings);
 	const hapScore = calcHappinessScore(data.happiness);
-	return Math.max(0, Math.min(100, hapScore * settings.weightHappiness + finScore * settings.weightFinance));
+	return Math.max(0, Math.min(100, hapScore * normalizedSettings.weightHappiness + finScore * normalizedSettings.weightFinance));
 }
 
 export function calcHamaScoreFromProfile(profile: Profile, financialData?: FinancialDataInput): number {

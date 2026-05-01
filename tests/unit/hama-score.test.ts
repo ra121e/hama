@@ -104,4 +104,30 @@ describe("hama-score", () => {
     expect(Number.isFinite(score)).toBe(true);
     expect(score).toBe(75);
   });
+
+  it("NaN を含む設定値でも HAMA スコアが NaN にならない", () => {
+    const score = calcHamaScore(
+      {
+        financial: {
+          assets: Number.NaN,
+          income: Number.NaN,
+          expense: Number.NaN,
+        },
+        happiness: {
+          hap_time: 50,
+          hap_health: 50,
+          hap_relation: 50,
+          hap_selfreal: 50,
+        },
+      },
+      {
+        weightHappiness: Number.NaN,
+        weightFinance: Number.NaN,
+        targetAssets: Number.NaN,
+      },
+    );
+
+    expect(Number.isFinite(score)).toBe(true);
+    expect(score).toBeGreaterThanOrEqual(0);
+  });
 });

@@ -12,6 +12,7 @@ import {
   toMonthlyMap,
   aggregateTo4Timepoints,
   aggregateFinancialDataByTimepoints,
+  aggregateBigCategory,
 } from "../../src/shared/lib/financial-aggregator";
 import type { FinancialEntry, FinancialItem } from "../../src/entities/financial-item";
 
@@ -240,6 +241,21 @@ describe("financial-aggregator", () => {
       expect(aggregated.data["5y"].assets).toBe(70000);
       expect(aggregated.data["10y"].income).toBe(50000 * 12);
       expect(aggregated.data["20y"].expense).toBe(20000 * 12);
+    });
+  });
+
+  describe("aggregateBigCategory", () => {
+    it("フロー系は期間合計、ストック系は期末残高を返す", () => {
+      const entries: FinancialEntry[] = [
+        { id: "income-1", scenarioId: "scenario-1", itemId: "income-item", yearMonth: "2026-04", value: 100, isExpanded: false, memo: null },
+        { id: "income-2", scenarioId: "scenario-1", itemId: "income-item", yearMonth: "2026-05", value: 200, isExpanded: false, memo: null },
+        { id: "asset-1", scenarioId: "scenario-1", itemId: "asset-item", yearMonth: "2026-04", value: 1000, isExpanded: false, memo: null },
+        { id: "asset-2", scenarioId: "scenario-1", itemId: "asset-item", yearMonth: "2026-05", value: 1200, isExpanded: false, memo: null },
+      ];
+
+      expect(aggregateBigCategory(entries.slice(0, 2), "income", ["2026-04", "2026-05"])).toBe(300);
+      expect(aggregateBigCategory(entries.slice(2), "asset", ["2026-04", "2026-05"])).toBe(1200);
+      expect(aggregateBigCategory(entries.slice(2), "liability", [])).toBe(1200);
     });
   });
 

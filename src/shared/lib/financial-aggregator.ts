@@ -19,7 +19,7 @@
  * - 20y：240ヶ月後
  */
 
-import type { FinancialEntry, FinancialItem } from "@/entities/financial-item";
+import type { FinancialEntry, FinancialItem, FinancialItemCategory } from "@/entities/financial-item";
 
 export type Timepoint = "now" | "5y" | "10y" | "20y";
 export type AggregationType = "balance" | "flow";
@@ -35,6 +35,11 @@ export type AggregatedFinancialData = {
   data: FinancialDataByTimepoint;
   hasDetailedData: boolean;
 };
+
+const isStockCategory = (category: FinancialItemCategory): boolean => category === "asset" || category === "liability";
+
+export const getAggregationTypeForCategory = (category: FinancialItemCategory): AggregationType =>
+  isStockCategory(category) ? "balance" : "flow";
 
 const createEmptyFinancialData = (): FinancialData => ({
   assets: 0,
@@ -89,6 +94,125 @@ function addMonths(yearMonth: string, months: number): string {
 
 function buildMonthlyMap(entries: FinancialEntry[]): Map<string, number> {
   return new Map(entries.map((entry) => [entry.yearMonth, entry.value]));
+}
+
+function getLatestFiniteEntry(entries: FinancialEntry[]): FinancialEntry | null {
+  const sorted = [...entries].sort((a, b) => monthDiff(a.yearMonth, b.yearMonth));
+  for (let index = sorted.length - 1; index >= 0; index -= 1) {
+    if (isFiniteNumber(sorted[index]?.value)) {
+      return sorted[index];
+    }
+  }
+  return null;
+}
+
+/**
+ * 大項目の表示値を、フロー/ストックのルールに従って集約する。
+ *
+ * - フロー系（収入・支出）: 指定期間の合計
+ * - ストック系（資産・負債）: 指定時点の残高
+ */
+export function aggregateBigCategory(
+  entries: FinancialEntry[] | Map<string, FinancialEntry>,
+  category: FinancialItemCategory,
+  periodMonths: string[],
+): number {
+  const entryList = entries instanceof Map ? Array.from(entries.values()) : entries;
+
+  if (entryList.length === 0) {
+    return 0;
+  }
+
+  const monthlyMap = buildMonthlyMap(entryList);
+
+  if (!isStockCategory(category)) {
+    if (periodMonths.length === 0) {
+      return entryList.reduce((sum, entry) => sum + (isFiniteNumber(entry.value) ? entry.value : 0), 0);
+    }
+
+    return periodMonths.reduce((sum, yearMonth) => sum + (monthlyMap.get(yearMonth) ?? 0), 0);
+  }
+
+  if (periodMonths.length === 0) {
+    return getLatestFiniteEntry(entryList)?.value ?? 0;
+  }
+
+  for (let index = periodMonths.length - 1; index >= 0; index -= 1) {
+    const value = monthlyMap.get(periodMonths[index]);
+    if (isFiniteNumber(value)) {
+      return value;
+    }
+  }
+
+  const latestEntry = getLatestFiniteEntry(entryList);
+  return latestEntry?.value ?? 0;
+}
+
+export type AggregatableRowLike = {
+  level: "large" | "medium" | "small";
+  category: FinancialItemCategory;
+  entries: Map<string, FinancialEntry>;
+  children: AggregatableRowLike[];
+};
+
+/**
+ * 行ツリーの配下エントリを集約する。
+ *
+ * - フロー系の親行: 既存どおり大項目のみ集約
+ * - ストック系の親行: 大項目だけでなく中項目・小項目の親も同じロジックで集約
+ */
+export function aggregateRowEntriesByCategory(row: AggregatableRowLike): Map<string, FinancialEntry> {
+  if (row.children.length === 0) {
+    return row.entries;
+  }
+
+  if (row.level !== "large" && !isStockCategory(row.category)) {
+    return row.entries;
+  }
+
+  const aggregated = new Map<string, FinancialEntry>();
+  const allYearMonths = new Set<string>();
+
+  const traverse = (currentRow: AggregatableRowLike) => {
+    currentRow.entries.forEach((entry) => {
+      allYearMonths.add(entry.yearMonth);
+    });
+    currentRow.children.forEach((child) => {
+      traverse(child);
+    });
+  };
+
+  traverse(row);
+
+  allYearMonths.forEach((yearMonth) => {
+    let totalValue = 0;
+
+    const collectValue = (currentRow: AggregatableRowLike) => {
+      const entry = currentRow.entries.get(yearMonth);
+      if (entry) {
+        totalValue += entry.value;
+      }
+      currentRow.children.forEach((child) => {
+        collectValue(child);
+      });
+    };
+
+    collectValue(row);
+
+    if (totalValue !== 0) {
+      aggregated.set(yearMonth, {
+        id: `${row.entries.size}-${yearMonth}`,
+        scenarioId: "",
+        itemId: `${row.level}-${row.category}`,
+        yearMonth,
+        value: totalValue,
+        isExpanded: false,
+        memo: null,
+      });
+    }
+  });
+
+  return aggregated;
 }
 
 function sumMonthlyWindow(
@@ -253,8 +377,17 @@ export function aggregateFinancialDataByTimepoints(
     }
 
     hasDetailedData = true;
-    const type = item.category === "asset" || item.category === "liability" ? "balance" : "flow";
+    const type = getAggregationTypeForCategory(item.category);
     const timepoints = aggregateTo4Timepoints(itemEntries, type);
+
+    if (process.env.NODE_ENV !== "production") {
+      console.debug("[financial-aggregator] aggregateFinancialDataByTimepoints", {
+        itemId,
+        category: item.category,
+        type,
+        timepoints,
+      });
+    }
 
     if (item.category === "asset") {
       data.now.assets += timepoints.now;
