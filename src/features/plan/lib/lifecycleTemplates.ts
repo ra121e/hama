@@ -17,6 +17,27 @@ const happinessSchema = z.object({
 	hap_selfreal: z.number().int().min(0).max(100),
 });
 
+// 詳細財務入力用スキーマ
+const financialDetailItemSchema = z.object({
+	level: z.enum(["large", "medium", "small"]),
+	parentId: z.string().nullable(),
+	name: z.string().min(1),
+	category: z.enum(["income", "expense", "asset", "liability"]),
+	autoCalc: z.enum(["none", "compound", "depreciation", "cashflow"]).default("none"),
+	rate: z.number().nullable().default(null),
+});
+
+const financialDetailEntrySchema = z.object({
+	itemName: z.string().min(1),
+	yearMonth: z.string(), // "2026-04" format
+	value: z.number(),
+});
+
+const financialDetailSchema = z.object({
+	items: z.array(financialDetailItemSchema),
+	entries: z.array(financialDetailEntrySchema),
+}).optional();
+
 export const lifecycleTemplateSchema = z.object({
 	id: z.enum(LIFECYCLE_TEMPLATE_IDS),
 	title: z.string().min(1),
@@ -24,6 +45,7 @@ export const lifecycleTemplateSchema = z.object({
 	timepoint: z.literal("now"),
 	financial: financialSchema,
 	happiness: happinessSchema,
+	financialDetail: financialDetailSchema,
 });
 
 export type LifecycleTemplate = z.infer<typeof lifecycleTemplateSchema>;

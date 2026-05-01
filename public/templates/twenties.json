@@ -1,17 +1,859 @@
 {
-	"id": "twenties",
-	"title": "20代社会人スタート",
-	"description": "社会人1〜3年目の生活基盤づくりと、スキル投資を両立するテンプレートです。",
-	"timepoint": "now",
-	"financial": {
-		"fin_assets": 1200000,
-		"fin_income": 3800000,
-		"fin_expense": 2400000
-	},
-	"happiness": {
-		"hap_time": 68,
-		"hap_health": 72,
-		"hap_relation": 60,
-		"hap_selfreal": 78
-	}
+  "id": "twenties",
+  "title": "20代社会人スタート",
+  "description": "社会人1〜3年目の生活基盤づくりと、スキル投資を両立するテンプレートです。",
+  "timepoint": "now",
+  "financial": {
+    "fin_assets": 1200000,
+    "fin_income": 3800000,
+    "fin_expense": 2400000
+  },
+  "happiness": {
+    "hap_time": 68,
+    "hap_health": 72,
+    "hap_relation": 60,
+    "hap_selfreal": 78
+  },
+  "financialDetail": {
+    "items": [
+      {
+        "level": "large",
+        "parentId": null,
+        "name": "収入",
+        "category": "income",
+        "autoCalc": "none",
+        "rate": null
+      },
+      {
+        "level": "medium",
+        "parentId": "収入",
+        "name": "手取給与",
+        "category": "income",
+        "autoCalc": "none",
+        "rate": null
+      },
+      {
+        "level": "small",
+        "parentId": "手取給与",
+        "name": "基本給",
+        "category": "income",
+        "autoCalc": "none",
+        "rate": null
+      },
+      {
+        "level": "small",
+        "parentId": "手取給与",
+        "name": "ボーナス（月次配分）",
+        "category": "income",
+        "autoCalc": "none",
+        "rate": null
+      },
+      {
+        "level": "large",
+        "parentId": null,
+        "name": "支出",
+        "category": "expense",
+        "autoCalc": "none",
+        "rate": null
+      },
+      {
+        "level": "medium",
+        "parentId": "支出",
+        "name": "住居費",
+        "category": "expense",
+        "autoCalc": "none",
+        "rate": null
+      },
+      {
+        "level": "small",
+        "parentId": "住居費",
+        "name": "家賃",
+        "category": "expense",
+        "autoCalc": "none",
+        "rate": null
+      },
+      {
+        "level": "small",
+        "parentId": "住居費",
+        "name": "光熱費",
+        "category": "expense",
+        "autoCalc": "none",
+        "rate": null
+      },
+      {
+        "level": "medium",
+        "parentId": "支出",
+        "name": "食費",
+        "category": "expense",
+        "autoCalc": "none",
+        "rate": null
+      },
+      {
+        "level": "small",
+        "parentId": "食費",
+        "name": "食事・飲食",
+        "category": "expense",
+        "autoCalc": "none",
+        "rate": null
+      },
+      {
+        "level": "medium",
+        "parentId": "支出",
+        "name": "自己投資",
+        "category": "expense",
+        "autoCalc": "none",
+        "rate": null
+      },
+      {
+        "level": "small",
+        "parentId": "自己投資",
+        "name": "書籍・セミナー",
+        "category": "expense",
+        "autoCalc": "none",
+        "rate": null
+      },
+      {
+        "level": "small",
+        "parentId": "自己投資",
+        "name": "スキル習得",
+        "category": "expense",
+        "autoCalc": "none",
+        "rate": null
+      },
+      {
+        "level": "large",
+        "parentId": null,
+        "name": "資産",
+        "category": "asset",
+        "autoCalc": "none",
+        "rate": null
+      },
+      {
+        "level": "medium",
+        "parentId": "資産",
+        "name": "現金・預金",
+        "category": "asset",
+        "autoCalc": "none",
+        "rate": null
+      },
+      {
+        "level": "small",
+        "parentId": "現金・預金",
+        "name": "普通預金",
+        "category": "asset",
+        "autoCalc": "none",
+        "rate": null
+      },
+      {
+        "level": "small",
+        "parentId": "現金・預金",
+        "name": "定期預金",
+        "category": "asset",
+        "autoCalc": "none",
+        "rate": null
+      },
+      {
+        "level": "medium",
+        "parentId": "資産",
+        "name": "投資資産",
+        "category": "asset",
+        "autoCalc": "none",
+        "rate": null
+      },
+      {
+        "level": "small",
+        "parentId": "投資資産",
+        "name": "つみたてNISA",
+        "category": "asset",
+        "autoCalc": "none",
+        "rate": null
+      },
+      {
+        "level": "large",
+        "parentId": null,
+        "name": "負債",
+        "category": "liability",
+        "autoCalc": "none",
+        "rate": null
+      },
+      {
+        "level": "medium",
+        "parentId": "負債",
+        "name": "ローン",
+        "category": "liability",
+        "autoCalc": "none",
+        "rate": null
+      },
+      {
+        "level": "small",
+        "parentId": "ローン",
+        "name": "奨学金",
+        "category": "liability",
+        "autoCalc": "none",
+        "rate": null
+      }
+    ],
+    "entries": [
+      {
+        "itemName": "基本給",
+        "yearMonth": "2026-04",
+        "value": 270000
+      },
+      {
+        "itemName": "基本給",
+        "yearMonth": "2026-05",
+        "value": 270000
+      },
+      {
+        "itemName": "基本給",
+        "yearMonth": "2026-06",
+        "value": 270000
+      },
+      {
+        "itemName": "基本給",
+        "yearMonth": "2026-07",
+        "value": 270000
+      },
+      {
+        "itemName": "基本給",
+        "yearMonth": "2026-08",
+        "value": 270000
+      },
+      {
+        "itemName": "基本給",
+        "yearMonth": "2026-09",
+        "value": 270000
+      },
+      {
+        "itemName": "基本給",
+        "yearMonth": "2026-10",
+        "value": 270000
+      },
+      {
+        "itemName": "基本給",
+        "yearMonth": "2026-11",
+        "value": 270000
+      },
+      {
+        "itemName": "基本給",
+        "yearMonth": "2026-12",
+        "value": 270000
+      },
+      {
+        "itemName": "基本給",
+        "yearMonth": "2027-01",
+        "value": 270000
+      },
+      {
+        "itemName": "基本給",
+        "yearMonth": "2027-02",
+        "value": 270000
+      },
+      {
+        "itemName": "基本給",
+        "yearMonth": "2027-03",
+        "value": 270000
+      },
+      {
+        "itemName": "ボーナス（月次配分）",
+        "yearMonth": "2026-04",
+        "value": 30000
+      },
+      {
+        "itemName": "ボーナス（月次配分）",
+        "yearMonth": "2026-05",
+        "value": 30000
+      },
+      {
+        "itemName": "ボーナス（月次配分）",
+        "yearMonth": "2026-06",
+        "value": 30000
+      },
+      {
+        "itemName": "ボーナス（月次配分）",
+        "yearMonth": "2026-07",
+        "value": 30000
+      },
+      {
+        "itemName": "ボーナス（月次配分）",
+        "yearMonth": "2026-08",
+        "value": 30000
+      },
+      {
+        "itemName": "ボーナス（月次配分）",
+        "yearMonth": "2026-09",
+        "value": 30000
+      },
+      {
+        "itemName": "ボーナス（月次配分）",
+        "yearMonth": "2026-10",
+        "value": 30000
+      },
+      {
+        "itemName": "ボーナス（月次配分）",
+        "yearMonth": "2026-11",
+        "value": 30000
+      },
+      {
+        "itemName": "ボーナス（月次配分）",
+        "yearMonth": "2026-12",
+        "value": 30000
+      },
+      {
+        "itemName": "ボーナス（月次配分）",
+        "yearMonth": "2027-01",
+        "value": 30000
+      },
+      {
+        "itemName": "ボーナス（月次配分）",
+        "yearMonth": "2027-02",
+        "value": 30000
+      },
+      {
+        "itemName": "ボーナス（月次配分）",
+        "yearMonth": "2027-03",
+        "value": 30000
+      },
+      {
+        "itemName": "家賃",
+        "yearMonth": "2026-04",
+        "value": 80000
+      },
+      {
+        "itemName": "家賃",
+        "yearMonth": "2026-05",
+        "value": 80000
+      },
+      {
+        "itemName": "家賃",
+        "yearMonth": "2026-06",
+        "value": 80000
+      },
+      {
+        "itemName": "家賃",
+        "yearMonth": "2026-07",
+        "value": 80000
+      },
+      {
+        "itemName": "家賃",
+        "yearMonth": "2026-08",
+        "value": 80000
+      },
+      {
+        "itemName": "家賃",
+        "yearMonth": "2026-09",
+        "value": 80000
+      },
+      {
+        "itemName": "家賃",
+        "yearMonth": "2026-10",
+        "value": 80000
+      },
+      {
+        "itemName": "家賃",
+        "yearMonth": "2026-11",
+        "value": 80000
+      },
+      {
+        "itemName": "家賃",
+        "yearMonth": "2026-12",
+        "value": 80000
+      },
+      {
+        "itemName": "家賃",
+        "yearMonth": "2027-01",
+        "value": 80000
+      },
+      {
+        "itemName": "家賃",
+        "yearMonth": "2027-02",
+        "value": 80000
+      },
+      {
+        "itemName": "家賃",
+        "yearMonth": "2027-03",
+        "value": 80000
+      },
+      {
+        "itemName": "光熱費",
+        "yearMonth": "2026-04",
+        "value": 12000
+      },
+      {
+        "itemName": "光熱費",
+        "yearMonth": "2026-05",
+        "value": 12000
+      },
+      {
+        "itemName": "光熱費",
+        "yearMonth": "2026-06",
+        "value": 12000
+      },
+      {
+        "itemName": "光熱費",
+        "yearMonth": "2026-07",
+        "value": 15000
+      },
+      {
+        "itemName": "光熱費",
+        "yearMonth": "2026-08",
+        "value": 15000
+      },
+      {
+        "itemName": "光熱費",
+        "yearMonth": "2026-09",
+        "value": 14000
+      },
+      {
+        "itemName": "光熱費",
+        "yearMonth": "2026-10",
+        "value": 12000
+      },
+      {
+        "itemName": "光熱費",
+        "yearMonth": "2026-11",
+        "value": 12000
+      },
+      {
+        "itemName": "光熱費",
+        "yearMonth": "2026-12",
+        "value": 15000
+      },
+      {
+        "itemName": "光熱費",
+        "yearMonth": "2027-01",
+        "value": 16000
+      },
+      {
+        "itemName": "光熱費",
+        "yearMonth": "2027-02",
+        "value": 14000
+      },
+      {
+        "itemName": "光熱費",
+        "yearMonth": "2027-03",
+        "value": 12000
+      },
+      {
+        "itemName": "食事・飲食",
+        "yearMonth": "2026-04",
+        "value": 45000
+      },
+      {
+        "itemName": "食事・飲食",
+        "yearMonth": "2026-05",
+        "value": 45000
+      },
+      {
+        "itemName": "食事・飲食",
+        "yearMonth": "2026-06",
+        "value": 45000
+      },
+      {
+        "itemName": "食事・飲食",
+        "yearMonth": "2026-07",
+        "value": 48000
+      },
+      {
+        "itemName": "食事・飲食",
+        "yearMonth": "2026-08",
+        "value": 48000
+      },
+      {
+        "itemName": "食事・飲食",
+        "yearMonth": "2026-09",
+        "value": 46000
+      },
+      {
+        "itemName": "食事・飲食",
+        "yearMonth": "2026-10",
+        "value": 45000
+      },
+      {
+        "itemName": "食事・飲食",
+        "yearMonth": "2026-11",
+        "value": 45000
+      },
+      {
+        "itemName": "食事・飲食",
+        "yearMonth": "2026-12",
+        "value": 52000
+      },
+      {
+        "itemName": "食事・飲食",
+        "yearMonth": "2027-01",
+        "value": 47000
+      },
+      {
+        "itemName": "食事・飲食",
+        "yearMonth": "2027-02",
+        "value": 46000
+      },
+      {
+        "itemName": "食事・飲食",
+        "yearMonth": "2027-03",
+        "value": 45000
+      },
+      {
+        "itemName": "書籍・セミナー",
+        "yearMonth": "2026-04",
+        "value": 8000
+      },
+      {
+        "itemName": "書籍・セミナー",
+        "yearMonth": "2026-05",
+        "value": 5000
+      },
+      {
+        "itemName": "書籍・セミナー",
+        "yearMonth": "2026-06",
+        "value": 10000
+      },
+      {
+        "itemName": "書籍・セミナー",
+        "yearMonth": "2026-07",
+        "value": 7000
+      },
+      {
+        "itemName": "書籍・セミナー",
+        "yearMonth": "2026-08",
+        "value": 6000
+      },
+      {
+        "itemName": "書籍・セミナー",
+        "yearMonth": "2026-09",
+        "value": 8000
+      },
+      {
+        "itemName": "書籍・セミナー",
+        "yearMonth": "2026-10",
+        "value": 5000
+      },
+      {
+        "itemName": "書籍・セミナー",
+        "yearMonth": "2026-11",
+        "value": 9000
+      },
+      {
+        "itemName": "書籍・セミナー",
+        "yearMonth": "2026-12",
+        "value": 12000
+      },
+      {
+        "itemName": "書籍・セミナー",
+        "yearMonth": "2027-01",
+        "value": 7000
+      },
+      {
+        "itemName": "書籍・セミナー",
+        "yearMonth": "2027-02",
+        "value": 6000
+      },
+      {
+        "itemName": "書籍・セミナー",
+        "yearMonth": "2027-03",
+        "value": 8000
+      },
+      {
+        "itemName": "スキル習得",
+        "yearMonth": "2026-04",
+        "value": 15000
+      },
+      {
+        "itemName": "スキル習得",
+        "yearMonth": "2026-05",
+        "value": 15000
+      },
+      {
+        "itemName": "スキル習得",
+        "yearMonth": "2026-06",
+        "value": 20000
+      },
+      {
+        "itemName": "スキル習得",
+        "yearMonth": "2026-07",
+        "value": 15000
+      },
+      {
+        "itemName": "スキル習得",
+        "yearMonth": "2026-08",
+        "value": 15000
+      },
+      {
+        "itemName": "スキル習得",
+        "yearMonth": "2026-09",
+        "value": 18000
+      },
+      {
+        "itemName": "スキル習得",
+        "yearMonth": "2026-10",
+        "value": 15000
+      },
+      {
+        "itemName": "スキル習得",
+        "yearMonth": "2026-11",
+        "value": 16000
+      },
+      {
+        "itemName": "スキル習得",
+        "yearMonth": "2026-12",
+        "value": 20000
+      },
+      {
+        "itemName": "スキル習得",
+        "yearMonth": "2027-01",
+        "value": 15000
+      },
+      {
+        "itemName": "スキル習得",
+        "yearMonth": "2027-02",
+        "value": 16000
+      },
+      {
+        "itemName": "スキル習得",
+        "yearMonth": "2027-03",
+        "value": 15000
+      },
+      {
+        "itemName": "普通預金",
+        "yearMonth": "2026-04",
+        "value": 600000
+      },
+      {
+        "itemName": "普通預金",
+        "yearMonth": "2026-05",
+        "value": 625000
+      },
+      {
+        "itemName": "普通預金",
+        "yearMonth": "2026-06",
+        "value": 650000
+      },
+      {
+        "itemName": "普通預金",
+        "yearMonth": "2026-07",
+        "value": 672000
+      },
+      {
+        "itemName": "普通預金",
+        "yearMonth": "2026-08",
+        "value": 694000
+      },
+      {
+        "itemName": "普通預金",
+        "yearMonth": "2026-09",
+        "value": 712000
+      },
+      {
+        "itemName": "普通預金",
+        "yearMonth": "2026-10",
+        "value": 732000
+      },
+      {
+        "itemName": "普通預金",
+        "yearMonth": "2026-11",
+        "value": 751000
+      },
+      {
+        "itemName": "普通預金",
+        "yearMonth": "2026-12",
+        "value": 760000
+      },
+      {
+        "itemName": "普通預金",
+        "yearMonth": "2027-01",
+        "value": 783000
+      },
+      {
+        "itemName": "普通預金",
+        "yearMonth": "2027-02",
+        "value": 800000
+      },
+      {
+        "itemName": "普通預金",
+        "yearMonth": "2027-03",
+        "value": 820000
+      },
+      {
+        "itemName": "定期預金",
+        "yearMonth": "2026-04",
+        "value": 400000
+      },
+      {
+        "itemName": "定期預金",
+        "yearMonth": "2026-05",
+        "value": 400000
+      },
+      {
+        "itemName": "定期預金",
+        "yearMonth": "2026-06",
+        "value": 400000
+      },
+      {
+        "itemName": "定期預金",
+        "yearMonth": "2026-07",
+        "value": 400000
+      },
+      {
+        "itemName": "定期預金",
+        "yearMonth": "2026-08",
+        "value": 400000
+      },
+      {
+        "itemName": "定期預金",
+        "yearMonth": "2026-09",
+        "value": 400000
+      },
+      {
+        "itemName": "定期預金",
+        "yearMonth": "2026-10",
+        "value": 400000
+      },
+      {
+        "itemName": "定期預金",
+        "yearMonth": "2026-11",
+        "value": 400000
+      },
+      {
+        "itemName": "定期預金",
+        "yearMonth": "2026-12",
+        "value": 400000
+      },
+      {
+        "itemName": "定期預金",
+        "yearMonth": "2027-01",
+        "value": 400000
+      },
+      {
+        "itemName": "定期預金",
+        "yearMonth": "2027-02",
+        "value": 400000
+      },
+      {
+        "itemName": "定期預金",
+        "yearMonth": "2027-03",
+        "value": 400000
+      },
+      {
+        "itemName": "つみたてNISA",
+        "yearMonth": "2026-04",
+        "value": 200000
+      },
+      {
+        "itemName": "つみたてNISA",
+        "yearMonth": "2026-05",
+        "value": 212000
+      },
+      {
+        "itemName": "つみたてNISA",
+        "yearMonth": "2026-06",
+        "value": 225000
+      },
+      {
+        "itemName": "つみたてNISA",
+        "yearMonth": "2026-07",
+        "value": 240000
+      },
+      {
+        "itemName": "つみたてNISA",
+        "yearMonth": "2026-08",
+        "value": 256000
+      },
+      {
+        "itemName": "つみたてNISA",
+        "yearMonth": "2026-09",
+        "value": 272000
+      },
+      {
+        "itemName": "つみたてNISA",
+        "yearMonth": "2026-10",
+        "value": 288000
+      },
+      {
+        "itemName": "つみたてNISA",
+        "yearMonth": "2026-11",
+        "value": 304000
+      },
+      {
+        "itemName": "つみたてNISA",
+        "yearMonth": "2026-12",
+        "value": 320000
+      },
+      {
+        "itemName": "つみたてNISA",
+        "yearMonth": "2027-01",
+        "value": 337000
+      },
+      {
+        "itemName": "つみたてNISA",
+        "yearMonth": "2027-02",
+        "value": 354000
+      },
+      {
+        "itemName": "つみたてNISA",
+        "yearMonth": "2027-03",
+        "value": 372000
+      },
+      {
+        "itemName": "奨学金",
+        "yearMonth": "2026-04",
+        "value": 200000
+      },
+      {
+        "itemName": "奨学金",
+        "yearMonth": "2026-05",
+        "value": 195000
+      },
+      {
+        "itemName": "奨学金",
+        "yearMonth": "2026-06",
+        "value": 190000
+      },
+      {
+        "itemName": "奨学金",
+        "yearMonth": "2026-07",
+        "value": 185000
+      },
+      {
+        "itemName": "奨学金",
+        "yearMonth": "2026-08",
+        "value": 180000
+      },
+      {
+        "itemName": "奨学金",
+        "yearMonth": "2026-09",
+        "value": 175000
+      },
+      {
+        "itemName": "奨学金",
+        "yearMonth": "2026-10",
+        "value": 170000
+      },
+      {
+        "itemName": "奨学金",
+        "yearMonth": "2026-11",
+        "value": 165000
+      },
+      {
+        "itemName": "奨学金",
+        "yearMonth": "2026-12",
+        "value": 160000
+      },
+      {
+        "itemName": "奨学金",
+        "yearMonth": "2027-01",
+        "value": 155000
+      },
+      {
+        "itemName": "奨学金",
+        "yearMonth": "2027-02",
+        "value": 150000
+      },
+      {
+        "itemName": "奨学金",
+        "yearMonth": "2027-03",
+        "value": 145000
+      }
+    ]
+  }
 }

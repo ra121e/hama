@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useRef } from "react";
 import { FinancialItemManagerDialog } from "@/features/financial-detail/components/FinancialItemManagerDialog";
+import { DetailTemplateSelector } from "@/features/financial-detail/components/DetailTemplateSelector";
 import { useToast } from "@/components/ui/use-toast";
 import { FinancialSpreadsheet } from "@/features/financial-detail/components/FinancialSpreadsheet";
 import { useProfileStore } from "@/store/profileStore";
@@ -11,6 +13,12 @@ export default function DetailInputPage() {
   const plans = useProfileStore((state) => state.plans);
   const activePlan = plans.find((p) => p.id === activeScenarioId);
   const { toast } = useToast();
+  const loadProfileFromDb = useProfileStore((state) => state.loadProfileFromDb);
+
+  const handleTemplateApplyComplete = async () => {
+    // テンプレート適用後、プロファイルを再読込してスプレッドシートを更新
+    await loadProfileFromDb();
+  };
 
   return (
     <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
@@ -32,6 +40,10 @@ export default function DetailInputPage() {
       </header>
 
       <section className="rounded-3xl border border-border bg-card/80 p-4 shadow-sm sm:p-6">
+        <div className="mb-6 rounded-lg border border-border/50 bg-muted/40 p-4">
+          <DetailTemplateSelector onApplyComplete={handleTemplateApplyComplete} />
+        </div>
+
         <div className="overflow-x-auto">
           <FinancialSpreadsheet
             scenarioId={activeScenarioId}

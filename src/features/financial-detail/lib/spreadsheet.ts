@@ -149,13 +149,6 @@ export const calculateSpreadsheetColumnValue = (
 		return sumPeriodValues() / years;
 	}
 
-	// ストック項目の5年セルで入力がない場合は null を返す
-	if (isStockCategory && column.type === "fiveYear") {
-		const hasAnyEntry = column.periodMonths.some((yearMonth) => entries.has(yearMonth));
-		if (!hasAnyEntry) {
-			return null; // 入力がないので空白のまま
-		}
-	}
-
+	// その他の列のデフォルト処理
 	return sumPeriodValues() / column.periodMonths.length;
 };

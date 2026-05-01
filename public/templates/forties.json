@@ -1,17 +1,859 @@
 {
-	"id": "forties",
-	"title": "40代キャリア中盤",
-	"description": "収入の伸びと将来の資産形成を両立しやすいキャリア中盤のテンプレートです。",
-	"timepoint": "now",
-	"financial": {
-		"fin_assets": 24800000,
-		"fin_income": 8600000,
-		"fin_expense": 5200000
-	},
-	"happiness": {
-		"hap_time": 62,
-		"hap_health": 63,
-		"hap_relation": 70,
-		"hap_selfreal": 74
-	}
+  "id": "forties",
+  "title": "40代充実期",
+  "description": "子育てが一段落し、キャリアも安定している時期。資産形成と人間関係を大切にするテンプレートです。",
+  "timepoint": "now",
+  "financial": {
+    "fin_assets": 25000000,
+    "fin_income": 8500000,
+    "fin_expense": 5500000
+  },
+  "happiness": {
+    "hap_time": 72,
+    "hap_health": 75,
+    "hap_relation": 75,
+    "hap_selfreal": 78
+  },
+  "financialDetail": {
+    "items": [
+      {
+        "level": "large",
+        "parentId": null,
+        "name": "収入",
+        "category": "income",
+        "autoCalc": "none",
+        "rate": null
+      },
+      {
+        "level": "medium",
+        "parentId": "収入",
+        "name": "給与",
+        "category": "income",
+        "autoCalc": "none",
+        "rate": null
+      },
+      {
+        "level": "small",
+        "parentId": "salary",
+        "name": "基本給",
+        "category": "income",
+        "autoCalc": "none",
+        "rate": null
+      },
+      {
+        "level": "small",
+        "parentId": "salary",
+        "name": "ボーナス（月次配分）",
+        "category": "income",
+        "autoCalc": "none",
+        "rate": null
+      },
+      {
+        "level": "medium",
+        "parentId": "収入",
+        "name": "その他収入",
+        "category": "income",
+        "autoCalc": "none",
+        "rate": null
+      },
+      {
+        "level": "small",
+        "parentId": "other_income",
+        "name": "副業",
+        "category": "income",
+        "autoCalc": "none",
+        "rate": null
+      },
+      {
+        "level": "large",
+        "parentId": null,
+        "name": "支出",
+        "category": "expense",
+        "autoCalc": "none",
+        "rate": null
+      },
+      {
+        "level": "medium",
+        "parentId": "支出",
+        "name": "住居費",
+        "category": "expense",
+        "autoCalc": "none",
+        "rate": null
+      },
+      {
+        "level": "small",
+        "parentId": "住居費",
+        "name": "家賃・ローン",
+        "category": "expense",
+        "autoCalc": "none",
+        "rate": null
+      },
+      {
+        "level": "small",
+        "parentId": "住居費",
+        "name": "光熱費",
+        "category": "expense",
+        "autoCalc": "none",
+        "rate": null
+      },
+      {
+        "level": "medium",
+        "parentId": "支出",
+        "name": "食費",
+        "category": "expense",
+        "autoCalc": "none",
+        "rate": null
+      },
+      {
+        "level": "small",
+        "parentId": "食費",
+        "name": "食事・飲食",
+        "category": "expense",
+        "autoCalc": "none",
+        "rate": null
+      },
+      {
+        "level": "medium",
+        "parentId": "支出",
+        "name": "教育費",
+        "category": "expense",
+        "autoCalc": "none",
+        "rate": null
+      },
+      {
+        "level": "small",
+        "parentId": "education",
+        "name": "学費",
+        "category": "expense",
+        "autoCalc": "none",
+        "rate": null
+      },
+      {
+        "level": "small",
+        "parentId": "education",
+        "name": "習い事",
+        "category": "expense",
+        "autoCalc": "none",
+        "rate": null
+      },
+      {
+        "level": "large",
+        "parentId": null,
+        "name": "資産",
+        "category": "asset",
+        "autoCalc": "none",
+        "rate": null
+      },
+      {
+        "level": "medium",
+        "parentId": "資産",
+        "name": "現金・預金",
+        "category": "asset",
+        "autoCalc": "none",
+        "rate": null
+      },
+      {
+        "level": "small",
+        "parentId": "現金・預金",
+        "name": "普通預金",
+        "category": "asset",
+        "autoCalc": "none",
+        "rate": null
+      },
+      {
+        "level": "small",
+        "parentId": "現金・預金",
+        "name": "定期預金",
+        "category": "asset",
+        "autoCalc": "none",
+        "rate": null
+      },
+      {
+        "level": "large",
+        "parentId": null,
+        "name": "負債",
+        "category": "liability",
+        "autoCalc": "none",
+        "rate": null
+      },
+      {
+        "level": "medium",
+        "parentId": "負債",
+        "name": "ローン",
+        "category": "liability",
+        "autoCalc": "none",
+        "rate": null
+      },
+      {
+        "level": "small",
+        "parentId": "ローン",
+        "name": "住宅ローン",
+        "category": "liability",
+        "autoCalc": "none",
+        "rate": null
+      }
+    ],
+    "entries": [
+      {
+        "itemName": "基本給",
+        "yearMonth": "2026-04",
+        "value": 680000
+      },
+      {
+        "itemName": "ボーナス（月次配分）",
+        "yearMonth": "2026-04",
+        "value": 170000
+      },
+      {
+        "itemName": "副業",
+        "yearMonth": "2026-04",
+        "value": 85000
+      },
+      {
+        "itemName": "家賃・ローン",
+        "yearMonth": "2026-04",
+        "value": 192500
+      },
+      {
+        "itemName": "光熱費",
+        "yearMonth": "2026-04",
+        "value": 44000
+      },
+      {
+        "itemName": "食事・飲食",
+        "yearMonth": "2026-04",
+        "value": 137500
+      },
+      {
+        "itemName": "学費",
+        "yearMonth": "2026-04",
+        "value": 82500
+      },
+      {
+        "itemName": "習い事",
+        "yearMonth": "2026-04",
+        "value": 27500
+      },
+      {
+        "itemName": "普通預金",
+        "yearMonth": "2026-04",
+        "value": 10000000
+      },
+      {
+        "itemName": "定期預金",
+        "yearMonth": "2026-04",
+        "value": 7500000
+      },
+      {
+        "itemName": "住宅ローン",
+        "yearMonth": "2026-04",
+        "value": 7500000
+      },
+      {
+        "itemName": "基本給",
+        "yearMonth": "2026-05",
+        "value": 680000
+      },
+      {
+        "itemName": "ボーナス（月次配分）",
+        "yearMonth": "2026-05",
+        "value": 170000
+      },
+      {
+        "itemName": "副業",
+        "yearMonth": "2026-05",
+        "value": 85000
+      },
+      {
+        "itemName": "家賃・ローン",
+        "yearMonth": "2026-05",
+        "value": 192500
+      },
+      {
+        "itemName": "光熱費",
+        "yearMonth": "2026-05",
+        "value": 44000
+      },
+      {
+        "itemName": "食事・飲食",
+        "yearMonth": "2026-05",
+        "value": 137500
+      },
+      {
+        "itemName": "学費",
+        "yearMonth": "2026-05",
+        "value": 82500
+      },
+      {
+        "itemName": "習い事",
+        "yearMonth": "2026-05",
+        "value": 27500
+      },
+      {
+        "itemName": "普通預金",
+        "yearMonth": "2026-05",
+        "value": 10000000
+      },
+      {
+        "itemName": "定期預金",
+        "yearMonth": "2026-05",
+        "value": 7500000
+      },
+      {
+        "itemName": "住宅ローン",
+        "yearMonth": "2026-05",
+        "value": 7500000
+      },
+      {
+        "itemName": "基本給",
+        "yearMonth": "2026-06",
+        "value": 680000
+      },
+      {
+        "itemName": "ボーナス（月次配分）",
+        "yearMonth": "2026-06",
+        "value": 170000
+      },
+      {
+        "itemName": "副業",
+        "yearMonth": "2026-06",
+        "value": 85000
+      },
+      {
+        "itemName": "家賃・ローン",
+        "yearMonth": "2026-06",
+        "value": 192500
+      },
+      {
+        "itemName": "光熱費",
+        "yearMonth": "2026-06",
+        "value": 44000
+      },
+      {
+        "itemName": "食事・飲食",
+        "yearMonth": "2026-06",
+        "value": 137500
+      },
+      {
+        "itemName": "学費",
+        "yearMonth": "2026-06",
+        "value": 82500
+      },
+      {
+        "itemName": "習い事",
+        "yearMonth": "2026-06",
+        "value": 27500
+      },
+      {
+        "itemName": "普通預金",
+        "yearMonth": "2026-06",
+        "value": 10000000
+      },
+      {
+        "itemName": "定期預金",
+        "yearMonth": "2026-06",
+        "value": 7500000
+      },
+      {
+        "itemName": "住宅ローン",
+        "yearMonth": "2026-06",
+        "value": 7500000
+      },
+      {
+        "itemName": "基本給",
+        "yearMonth": "2026-07",
+        "value": 680000
+      },
+      {
+        "itemName": "ボーナス（月次配分）",
+        "yearMonth": "2026-07",
+        "value": 170000
+      },
+      {
+        "itemName": "副業",
+        "yearMonth": "2026-07",
+        "value": 85000
+      },
+      {
+        "itemName": "家賃・ローン",
+        "yearMonth": "2026-07",
+        "value": 192500
+      },
+      {
+        "itemName": "光熱費",
+        "yearMonth": "2026-07",
+        "value": 44000
+      },
+      {
+        "itemName": "食事・飲食",
+        "yearMonth": "2026-07",
+        "value": 137500
+      },
+      {
+        "itemName": "学費",
+        "yearMonth": "2026-07",
+        "value": 82500
+      },
+      {
+        "itemName": "習い事",
+        "yearMonth": "2026-07",
+        "value": 27500
+      },
+      {
+        "itemName": "普通預金",
+        "yearMonth": "2026-07",
+        "value": 10000000
+      },
+      {
+        "itemName": "定期預金",
+        "yearMonth": "2026-07",
+        "value": 7500000
+      },
+      {
+        "itemName": "住宅ローン",
+        "yearMonth": "2026-07",
+        "value": 7500000
+      },
+      {
+        "itemName": "基本給",
+        "yearMonth": "2026-08",
+        "value": 680000
+      },
+      {
+        "itemName": "ボーナス（月次配分）",
+        "yearMonth": "2026-08",
+        "value": 170000
+      },
+      {
+        "itemName": "副業",
+        "yearMonth": "2026-08",
+        "value": 85000
+      },
+      {
+        "itemName": "家賃・ローン",
+        "yearMonth": "2026-08",
+        "value": 192500
+      },
+      {
+        "itemName": "光熱費",
+        "yearMonth": "2026-08",
+        "value": 44000
+      },
+      {
+        "itemName": "食事・飲食",
+        "yearMonth": "2026-08",
+        "value": 137500
+      },
+      {
+        "itemName": "学費",
+        "yearMonth": "2026-08",
+        "value": 82500
+      },
+      {
+        "itemName": "習い事",
+        "yearMonth": "2026-08",
+        "value": 27500
+      },
+      {
+        "itemName": "普通預金",
+        "yearMonth": "2026-08",
+        "value": 10000000
+      },
+      {
+        "itemName": "定期預金",
+        "yearMonth": "2026-08",
+        "value": 7500000
+      },
+      {
+        "itemName": "住宅ローン",
+        "yearMonth": "2026-08",
+        "value": 7500000
+      },
+      {
+        "itemName": "基本給",
+        "yearMonth": "2026-09",
+        "value": 680000
+      },
+      {
+        "itemName": "ボーナス（月次配分）",
+        "yearMonth": "2026-09",
+        "value": 170000
+      },
+      {
+        "itemName": "副業",
+        "yearMonth": "2026-09",
+        "value": 85000
+      },
+      {
+        "itemName": "家賃・ローン",
+        "yearMonth": "2026-09",
+        "value": 192500
+      },
+      {
+        "itemName": "光熱費",
+        "yearMonth": "2026-09",
+        "value": 44000
+      },
+      {
+        "itemName": "食事・飲食",
+        "yearMonth": "2026-09",
+        "value": 137500
+      },
+      {
+        "itemName": "学費",
+        "yearMonth": "2026-09",
+        "value": 82500
+      },
+      {
+        "itemName": "習い事",
+        "yearMonth": "2026-09",
+        "value": 27500
+      },
+      {
+        "itemName": "普通預金",
+        "yearMonth": "2026-09",
+        "value": 10000000
+      },
+      {
+        "itemName": "定期預金",
+        "yearMonth": "2026-09",
+        "value": 7500000
+      },
+      {
+        "itemName": "住宅ローン",
+        "yearMonth": "2026-09",
+        "value": 7500000
+      },
+      {
+        "itemName": "基本給",
+        "yearMonth": "2026-10",
+        "value": 680000
+      },
+      {
+        "itemName": "ボーナス（月次配分）",
+        "yearMonth": "2026-10",
+        "value": 170000
+      },
+      {
+        "itemName": "副業",
+        "yearMonth": "2026-10",
+        "value": 85000
+      },
+      {
+        "itemName": "家賃・ローン",
+        "yearMonth": "2026-10",
+        "value": 192500
+      },
+      {
+        "itemName": "光熱費",
+        "yearMonth": "2026-10",
+        "value": 44000
+      },
+      {
+        "itemName": "食事・飲食",
+        "yearMonth": "2026-10",
+        "value": 137500
+      },
+      {
+        "itemName": "学費",
+        "yearMonth": "2026-10",
+        "value": 82500
+      },
+      {
+        "itemName": "習い事",
+        "yearMonth": "2026-10",
+        "value": 27500
+      },
+      {
+        "itemName": "普通預金",
+        "yearMonth": "2026-10",
+        "value": 10000000
+      },
+      {
+        "itemName": "定期預金",
+        "yearMonth": "2026-10",
+        "value": 7500000
+      },
+      {
+        "itemName": "住宅ローン",
+        "yearMonth": "2026-10",
+        "value": 7500000
+      },
+      {
+        "itemName": "基本給",
+        "yearMonth": "2026-11",
+        "value": 680000
+      },
+      {
+        "itemName": "ボーナス（月次配分）",
+        "yearMonth": "2026-11",
+        "value": 170000
+      },
+      {
+        "itemName": "副業",
+        "yearMonth": "2026-11",
+        "value": 85000
+      },
+      {
+        "itemName": "家賃・ローン",
+        "yearMonth": "2026-11",
+        "value": 192500
+      },
+      {
+        "itemName": "光熱費",
+        "yearMonth": "2026-11",
+        "value": 44000
+      },
+      {
+        "itemName": "食事・飲食",
+        "yearMonth": "2026-11",
+        "value": 137500
+      },
+      {
+        "itemName": "学費",
+        "yearMonth": "2026-11",
+        "value": 82500
+      },
+      {
+        "itemName": "習い事",
+        "yearMonth": "2026-11",
+        "value": 27500
+      },
+      {
+        "itemName": "普通預金",
+        "yearMonth": "2026-11",
+        "value": 10000000
+      },
+      {
+        "itemName": "定期預金",
+        "yearMonth": "2026-11",
+        "value": 7500000
+      },
+      {
+        "itemName": "住宅ローン",
+        "yearMonth": "2026-11",
+        "value": 7500000
+      },
+      {
+        "itemName": "基本給",
+        "yearMonth": "2026-12",
+        "value": 680000
+      },
+      {
+        "itemName": "ボーナス（月次配分）",
+        "yearMonth": "2026-12",
+        "value": 170000
+      },
+      {
+        "itemName": "副業",
+        "yearMonth": "2026-12",
+        "value": 85000
+      },
+      {
+        "itemName": "家賃・ローン",
+        "yearMonth": "2026-12",
+        "value": 192500
+      },
+      {
+        "itemName": "光熱費",
+        "yearMonth": "2026-12",
+        "value": 44000
+      },
+      {
+        "itemName": "食事・飲食",
+        "yearMonth": "2026-12",
+        "value": 137500
+      },
+      {
+        "itemName": "学費",
+        "yearMonth": "2026-12",
+        "value": 82500
+      },
+      {
+        "itemName": "習い事",
+        "yearMonth": "2026-12",
+        "value": 27500
+      },
+      {
+        "itemName": "普通預金",
+        "yearMonth": "2026-12",
+        "value": 10000000
+      },
+      {
+        "itemName": "定期預金",
+        "yearMonth": "2026-12",
+        "value": 7500000
+      },
+      {
+        "itemName": "住宅ローン",
+        "yearMonth": "2026-12",
+        "value": 7500000
+      },
+      {
+        "itemName": "基本給",
+        "yearMonth": "2027-01",
+        "value": 680000
+      },
+      {
+        "itemName": "ボーナス（月次配分）",
+        "yearMonth": "2027-01",
+        "value": 170000
+      },
+      {
+        "itemName": "副業",
+        "yearMonth": "2027-01",
+        "value": 85000
+      },
+      {
+        "itemName": "家賃・ローン",
+        "yearMonth": "2027-01",
+        "value": 192500
+      },
+      {
+        "itemName": "光熱費",
+        "yearMonth": "2027-01",
+        "value": 44000
+      },
+      {
+        "itemName": "食事・飲食",
+        "yearMonth": "2027-01",
+        "value": 137500
+      },
+      {
+        "itemName": "学費",
+        "yearMonth": "2027-01",
+        "value": 82500
+      },
+      {
+        "itemName": "習い事",
+        "yearMonth": "2027-01",
+        "value": 27500
+      },
+      {
+        "itemName": "普通預金",
+        "yearMonth": "2027-01",
+        "value": 10000000
+      },
+      {
+        "itemName": "定期預金",
+        "yearMonth": "2027-01",
+        "value": 7500000
+      },
+      {
+        "itemName": "住宅ローン",
+        "yearMonth": "2027-01",
+        "value": 7500000
+      },
+      {
+        "itemName": "基本給",
+        "yearMonth": "2027-02",
+        "value": 680000
+      },
+      {
+        "itemName": "ボーナス（月次配分）",
+        "yearMonth": "2027-02",
+        "value": 170000
+      },
+      {
+        "itemName": "副業",
+        "yearMonth": "2027-02",
+        "value": 85000
+      },
+      {
+        "itemName": "家賃・ローン",
+        "yearMonth": "2027-02",
+        "value": 192500
+      },
+      {
+        "itemName": "光熱費",
+        "yearMonth": "2027-02",
+        "value": 44000
+      },
+      {
+        "itemName": "食事・飲食",
+        "yearMonth": "2027-02",
+        "value": 137500
+      },
+      {
+        "itemName": "学費",
+        "yearMonth": "2027-02",
+        "value": 82500
+      },
+      {
+        "itemName": "習い事",
+        "yearMonth": "2027-02",
+        "value": 27500
+      },
+      {
+        "itemName": "普通預金",
+        "yearMonth": "2027-02",
+        "value": 10000000
+      },
+      {
+        "itemName": "定期預金",
+        "yearMonth": "2027-02",
+        "value": 7500000
+      },
+      {
+        "itemName": "住宅ローン",
+        "yearMonth": "2027-02",
+        "value": 7500000
+      },
+      {
+        "itemName": "基本給",
+        "yearMonth": "2027-03",
+        "value": 680000
+      },
+      {
+        "itemName": "ボーナス（月次配分）",
+        "yearMonth": "2027-03",
+        "value": 170000
+      },
+      {
+        "itemName": "副業",
+        "yearMonth": "2027-03",
+        "value": 85000
+      },
+      {
+        "itemName": "家賃・ローン",
+        "yearMonth": "2027-03",
+        "value": 192500
+      },
+      {
+        "itemName": "光熱費",
+        "yearMonth": "2027-03",
+        "value": 44000
+      },
+      {
+        "itemName": "食事・飲食",
+        "yearMonth": "2027-03",
+        "value": 137500
+      },
+      {
+        "itemName": "学費",
+        "yearMonth": "2027-03",
+        "value": 82500
+      },
+      {
+        "itemName": "習い事",
+        "yearMonth": "2027-03",
+        "value": 27500
+      },
+      {
+        "itemName": "普通預金",
+        "yearMonth": "2027-03",
+        "value": 10000000
+      },
+      {
+        "itemName": "定期預金",
+        "yearMonth": "2027-03",
+        "value": 7500000
+      },
+      {
+        "itemName": "住宅ローン",
+        "yearMonth": "2027-03",
+        "value": 7500000
+      }
+    ]
+  }
 }

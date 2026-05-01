@@ -257,7 +257,6 @@ export function useFinancialSpreadsheet(scenarioId?: string | null) {
 						// Debug: show how many entries will be saved
 						console.debug("savePeriodValue: filtered stock entries", { original: entries.length, filtered: filtered.length, start });
 						// use filtered entries for POST
-						// @ts-expect-error override for posting
 						(entries as any) = filtered;
 					}
 				}
