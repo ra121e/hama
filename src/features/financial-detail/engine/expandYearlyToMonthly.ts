@@ -26,6 +26,18 @@ const normalizeYears = (years?: number) => {
 	return Math.floor(years);
 };
 
+const isStockCategory = (category: FinancialItemCategory): boolean => {
+	return category === "asset" || category === "liability";
+};
+
+const copyValueToAllMonths = (months: string[], value: number) => {
+	if (months.length === 0) {
+		return [] as number[];
+	}
+
+	return months.map(() => value);
+};
+
 const distributeEvenly = (months: string[], yearlyValue: number) => {
 	if (months.length === 0) {
 		return [] as number[];
@@ -74,8 +86,14 @@ const expandBaseYearPattern = (
 ) => {
 	const baseMonths = Array.from({ length: 12 }, (_, index) => `base-${String(index + 1).padStart(2, "0")}`);
 
+	// autoCalc がある場合は、ストック/フロー関わらず優先的に計算（複利や減価償却など）
 	if (autoCalc !== "none") {
 		return expandWithAutoCalc(baseMonths, yearlyValue, autoCalc, rate);
+	}
+
+	// ストック項目（資産・負債）: autoCalc が "none" の場合のみ入力値をそのまま全月にコピー
+	if (isStockCategory(category)) {
+		return copyValueToAllMonths(baseMonths, yearlyValue);
 	}
 
 	if (category === "expense" && eventMonths && eventMonths.length > 0) {
@@ -85,11 +103,18 @@ const expandBaseYearPattern = (
 	return distributeEvenly(baseMonths, yearlyValue);
 };
 
-const repeatAnnualPattern = (months: string[], annualPattern: number[]) => {
+const repeatAnnualPattern = (months: string[], annualPattern: number[], isStock: boolean = false) => {
 	if (annualPattern.length !== 12 || months.length % 12 !== 0) {
 		return months.map(() => 0);
 	}
 
+	// ストック項目: 年パターンの最後の値（年末残高）をすべてのそれ以降の年にコピー
+	if (isStock && annualPattern.length > 0) {
+		const stockValue = annualPattern[11]; // 12月目の値を年末残高として使用
+		return months.map(() => stockValue);
+	}
+
+	// フロー項目: 年パターンを繰り返す（従来の均等配分ロジック）
 	return months.map((_, index) => annualPattern[index % 12] ?? 0);
 };
 
@@ -147,7 +172,7 @@ export const expandYearlyToMonthly = ({
 	if (normalizedYears === 1) {
 		monthlyValues = annualPattern;
 	} else {
-		monthlyValues = repeatAnnualPattern(periodMonths, annualPattern);
+		monthlyValues = repeatAnnualPattern(periodMonths, annualPattern, isStockCategory(category));
 	}
 
 	return periodMonths.map((yearMonth, index) => ({

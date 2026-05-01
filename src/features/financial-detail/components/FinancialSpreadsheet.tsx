@@ -80,9 +80,19 @@ export function FinancialSpreadsheet({ scenarioId, onYearlyExpanded, onSaveError
 				};
 
 				columns.forEach((col) => {
-					row[col.id] = isStockCategory
-						? aggregateBigCategory(item.entries, item.category, col.periodMonths)
-						: calculateSpreadsheetColumnValue(item.entries, col);
+					if (isStockCategory) {
+						// ストック項目の場合
+						if (col.type === "fiveYear") {
+							// 5年セルで入力がない場合は空白
+							row[col.id] = calculateSpreadsheetColumnValue(item.entries, col, true);
+						} else {
+							// 月次・年次列は通常の集約
+							row[col.id] = aggregateBigCategory(item.entries, item.category, col.periodMonths);
+						}
+					} else {
+						// フロー項目の場合は従来通り
+						row[col.id] = calculateSpreadsheetColumnValue(item.entries, col, false);
+					}
 				});
 
 				row.total = isStockCategory

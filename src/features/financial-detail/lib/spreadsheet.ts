@@ -92,8 +92,9 @@ export const generateSpreadsheetColumns = (baseDate = new Date()): SpreadsheetCo
 
 export const calculateSpreadsheetColumnValue = (
 	entries: Map<string, FinancialEntry>,
-	column: Pick<SpreadsheetColumn, "id" | "periodMonths" | "type">
-) => {
+	column: Pick<SpreadsheetColumn, "id" | "periodMonths" | "type"> & { isStockCategory?: boolean },
+	isStockCategory?: boolean
+): number | null => {
 	if (column.id === "total") {
 		let total = 0;
 		entries.forEach((entry) => {
@@ -114,6 +115,14 @@ export const calculateSpreadsheetColumnValue = (
 
 	if (column.periodMonths.length === 1) {
 		return entries.get(column.periodMonths[0])?.value ?? 0;
+	}
+
+	// ストック項目の5年セルで入力がない場合は null を返す
+	if (isStockCategory && column.type === "fiveYear") {
+		const hasAnyEntry = column.periodMonths.some((yearMonth) => entries.has(yearMonth));
+		if (!hasAnyEntry) {
+			return null; // 入力がないので空白のまま
+		}
 	}
 
 	const total = column.periodMonths.reduce((sum, yearMonth) => {

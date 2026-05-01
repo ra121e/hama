@@ -76,4 +76,53 @@ describe("expandYearlyToMonthly", () => {
 		expect(result.every((entry) => entry.value === 100000)).toBe(true);
 		expect(result.every((entry) => entry.isExpanded)).toBe(true);
 	});
+
+	it("copies stock item value (asset) across 12 months without distribution", () => {
+		const result = expandYearlyToMonthly({
+			periodMonths: months,
+			yearlyValue: 80000000, // 総資産 8000万円
+			category: "asset",
+			autoCalc: "none",
+		});
+
+		expect(result).toHaveLength(12);
+		// ストック項目は「割り算しない」、すべての月に同じ値を設定
+		expect(result.every((entry) => entry.value === 80000000)).toBe(true);
+		expect(result.every((entry) => entry.isExpanded)).toBe(true);
+	});
+
+	it("copies stock item value (liability) across 12 months without distribution", () => {
+		const result = expandYearlyToMonthly({
+			periodMonths: months,
+			yearlyValue: 30000000, // 総負債 3000万円
+			category: "liability",
+			autoCalc: "none",
+		});
+
+		expect(result).toHaveLength(12);
+		// ストック項目は「割り算しない」、すべての月に同じ値を設定
+		expect(result.every((entry) => entry.value === 30000000)).toBe(true);
+		expect(result.every((entry) => entry.isExpanded)).toBe(true);
+	});
+
+	it("copies stock item value across 5 years (60 months) without distribution", () => {
+		const sixtyMonths = Array.from({ length: 60 }, (_, index) => {
+			const year = 2035 + Math.floor(index / 12);
+			const month = String((index % 12) + 1).padStart(2, "0");
+			return `${year}-${month}`;
+		});
+
+		const result = expandYearlyToMonthly({
+			periodMonths: sixtyMonths,
+			yearlyValue: 100000000, // 総資産 1億円
+			years: 5,
+			category: "asset",
+			autoCalc: "none",
+		});
+
+		expect(result).toHaveLength(60);
+		// ストック項目は「割り算しない」、すべての月に同じ値を設定
+		expect(result.every((entry) => entry.value === 100000000)).toBe(true);
+		expect(result.every((entry) => entry.isExpanded)).toBe(true);
+	});
 });
