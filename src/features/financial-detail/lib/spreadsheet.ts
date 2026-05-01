@@ -62,7 +62,7 @@ export const generateSpreadsheetColumns = (baseDate = new Date()): SpreadsheetCo
 		const year = periodStart.getFullYear();
 		columns.push({
 			id: `year_${year}`,
-			label: `${year}`,
+			label: `${year}（年額）`,
 			yearMonth: null,
 			periodMonths,
 			type: "year",
@@ -78,7 +78,7 @@ export const generateSpreadsheetColumns = (baseDate = new Date()): SpreadsheetCo
 
 		columns.push({
 			id: `five_year_${startYear}`,
-			label: `5年単位（年額） ${startYear}-${endYear}`,
+			label: `5年単位 ${startYear}-${endYear}（年額）`,
 			yearMonth: null,
 			periodMonths,
 			type: "fiveYear",
@@ -95,6 +95,23 @@ export const calculateSpreadsheetColumnValue = (
 	column: Pick<SpreadsheetColumn, "id" | "periodMonths" | "type"> & { isStockCategory?: boolean },
 	isStockCategory?: boolean
 ): number | null => {
+	const sumPeriodValues = () => {
+		return column.periodMonths.reduce((sum, yearMonth) => {
+			return sum + (entries.get(yearMonth)?.value ?? 0);
+		}, 0);
+	};
+
+	const getLatestPeriodValue = () => {
+		for (let index = column.periodMonths.length - 1; index >= 0; index -= 1) {
+			const value = entries.get(column.periodMonths[index])?.value;
+			if (typeof value === "number" && Number.isFinite(value)) {
+				return value;
+			}
+		}
+
+		return 0;
+	};
+
 	if (column.id === "total") {
 		let total = 0;
 		entries.forEach((entry) => {
@@ -104,9 +121,7 @@ export const calculateSpreadsheetColumnValue = (
 	}
 
 	if (column.type === "total") {
-		return column.periodMonths.reduce((sum, yearMonth) => {
-			return sum + (entries.get(yearMonth)?.value ?? 0);
-		}, 0);
+		return sumPeriodValues();
 	}
 
 	if (column.periodMonths.length === 0) {
@@ -117,6 +132,23 @@ export const calculateSpreadsheetColumnValue = (
 		return entries.get(column.periodMonths[0])?.value ?? 0;
 	}
 
+	if (column.type === "year") {
+		if (isStockCategory) {
+			return getLatestPeriodValue();
+		}
+		// 年次列はその年の合計（年額）を表示
+		return sumPeriodValues();
+	}
+
+	if (column.type === "fiveYear") {
+		if (isStockCategory) {
+			return getLatestPeriodValue();
+		}
+		// フロー項目の5年列は表示上は年額（5年合計を年数で割る）を返す
+		const years = column.periodMonths.length / 12 || 1;
+		return sumPeriodValues() / years;
+	}
+
 	// ストック項目の5年セルで入力がない場合は null を返す
 	if (isStockCategory && column.type === "fiveYear") {
 		const hasAnyEntry = column.periodMonths.some((yearMonth) => entries.has(yearMonth));
@@ -125,9 +157,5 @@ export const calculateSpreadsheetColumnValue = (
 		}
 	}
 
-	const total = column.periodMonths.reduce((sum, yearMonth) => {
-		return sum + (entries.get(yearMonth)?.value ?? 0);
-	}, 0);
-
-	return total / column.periodMonths.length;
+	return sumPeriodValues() / column.periodMonths.length;
 };

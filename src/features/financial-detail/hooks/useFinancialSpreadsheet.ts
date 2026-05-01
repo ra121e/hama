@@ -6,23 +6,10 @@ import { expandYearlyToMonthly } from "@/features/financial-detail/engine/expand
 import { useFinancialItems } from "@/features/financial-detail/hooks/useFinancialItems";
 import type { SpreadsheetColumn } from "@/features/financial-detail/lib/spreadsheet";
 import { generateSpreadsheetColumns } from "@/features/financial-detail/lib/spreadsheet";
-import { aggregateFinancialDataByTimepoints, aggregateRowEntriesByCategory } from "@/shared/lib/financial-aggregator";
+import { aggregateFinancialDataByTimepoints } from "@/shared/lib/financial-aggregator";
 import { useProfileStore } from "@/store/profileStore";
+import { buildRowTree, type SpreadsheetRow } from "@/features/financial-detail/lib/buildRowTree";
 export type { SpreadsheetColumn } from "@/features/financial-detail/lib/spreadsheet";
-
-export type SpreadsheetRow = {
-	id: string;
-	itemId: string;
-	name: string;
-	level: "large" | "medium" | "small";
-	category: FinancialItemCategory;
-	autoCalc: FinancialAutoCalc;
-	isAutoCalc: boolean;
-	rate: number | null;
-	parentId: string | null;
-	children: SpreadsheetRow[];
-	entries: Map<string, FinancialEntry>;
-};
 
 type SavePeriodValueOptions = {
 	columnType?: SpreadsheetColumn["type"];
@@ -49,50 +36,6 @@ type LoadState = {
 	error: string | null;
 };
 
-const buildRowTree = (
-	items: FinancialItem[],
-	entries: FinancialEntry[],
-	parentId: string | null = null
-): SpreadsheetRow[] => {
-	const entriesMap = new Map<string, FinancialEntry[]>();
-	entries.forEach((entry) => {
-		if (!entriesMap.has(entry.itemId)) {
-			entriesMap.set(entry.itemId, []);
-		}
-		entriesMap.get(entry.itemId)!.push(entry);
-	});
-
-	const sortedItems = items
-		.filter((item) => item.parentId === parentId)
-		.sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name, "ja"));
-
-	return sortedItems.map((item) => {
-		const itemEntries = entriesMap.get(item.id) ?? [];
-		const entriesByMonth = new Map<string, FinancialEntry>();
-		itemEntries.forEach((entry) => {
-			entriesByMonth.set(entry.yearMonth, entry);
-		});
-
-		const row: SpreadsheetRow = {
-			id: item.id,
-			itemId: item.id,
-			name: item.name,
-			level: item.level as "large" | "medium" | "small",
-			category: item.category,
-			autoCalc: item.autoCalc,
-			isAutoCalc: item.autoCalc !== "none",
-			rate: item.rate,
-			parentId: item.parentId,
-			entries: entriesByMonth,
-			children: buildRowTree(items, entries, item.id),
-		};
-
-		// 大項目、または資産・負債カテゴリの親項目の場合、配下の entries を集約
-		row.entries = aggregateRowEntriesByCategory(row);
-
-		return row;
-	});
-};
 
 export function useFinancialSpreadsheet(scenarioId: string | null) {
 	// 共有の項目読み込みフック

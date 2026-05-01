@@ -4,8 +4,9 @@ import { useMemo, useCallback, useRef, useEffect } from "react";
 import { AllCommunityModule, ModuleRegistry } from "ag-grid-community";
 import { AgGridReact } from "ag-grid-react";
 import type { CellStyle, ColDef, GridReadyEvent, GridApi } from "ag-grid-community";
-import { useFinancialSpreadsheet, type SpreadsheetRow } from "@/features/financial-detail/hooks/useFinancialSpreadsheet";
+import { useFinancialSpreadsheet } from "@/features/financial-detail/hooks/useFinancialSpreadsheet";
 import { calculateSpreadsheetColumnValue } from "@/features/financial-detail/lib/spreadsheet";
+import type { SpreadsheetRow } from "@/features/financial-detail/lib/buildRowTree";
 import { formatCurrency } from "@/shared/lib/formatter";
 import { aggregateBigCategory } from "@/shared/lib/financial-aggregator";
 
@@ -37,6 +38,27 @@ export function FinancialSpreadsheet({ scenarioId, onYearlyExpanded, onSaveError
 	const gridApiRef = useRef<GridApi | null>(null);
 	const gridContainerRef = useRef<HTMLDivElement>(null);
 	const scrollPositionRef = useRef<{ horizontal: number; vertical: number }>({ horizontal: 0, vertical: 0 });
+
+	const getAutoCalcTooltip = useCallback((level: string, category: SpreadsheetRow["category"]) => {
+		const isStockCategory = category === "asset" || category === "liability";
+		if (level === "large") {
+			return isStockCategory ? "残高合計（自動計算）" : "中項目の合計（自動計算）";
+		}
+
+		if (level === "medium") {
+			return isStockCategory ? "残高合計（自動計算）" : "小項目の合計（自動計算）";
+		}
+
+		return "";
+	}, []);
+
+	const getAnnualTooltip = useCallback((value: number | null | undefined, periodMonths: string[]) => {
+		if (value === null || value === undefined) {
+			return "";
+		}
+
+		return `年額 ${formatCurrency(value)}（${periodMonths.length}ヶ月展開）`;
+	}, []);
 
 	const handleGridReady = useCallback((event: GridReadyEvent) => {
 		gridApiRef.current = event.api;
@@ -160,11 +182,7 @@ export function FinancialSpreadsheet({ scenarioId, onYearlyExpanded, onSaveError
 				tooltipValueGetter: (params) => {
 					const level = params.data?.level || "";
 					const category = params.data?.category || "";
-					const isStockCategory = category === "asset" || category === "liability";
-					if (level === "large") {
-						return isStockCategory ? "残高合計（自動計算）" : "中項目の合計（自動計算）";
-					}
-					return "";
+					return getAutoCalcTooltip(level, category);
 				},
 			},
 		];
@@ -208,12 +226,7 @@ export function FinancialSpreadsheet({ scenarioId, onYearlyExpanded, onSaveError
 				headerName: col.label,
 				width: col.type === "month" ? 90 : 120,
 				editable: (params) => {
-					// 大項目（level === 'large'）は常に編集不可
-					if (params.data?.level === "large") {
-						return false;
-					}
-					// 自動計算セルも編集不可
-					return !params.data?.isAutoCalc;
+					return params.data?.level === "small";
 				},
 				cellEditor: "agNumberCellEditor",
 				cellEditorParams: {
@@ -226,25 +239,64 @@ export function FinancialSpreadsheet({ scenarioId, onYearlyExpanded, onSaveError
 					return formatCurrency(value);
 				},
 				cellStyle: (params): CellStyle | undefined => {
-					const baseStyle: CellStyle = col.type === "fiveYear"
-						? { backgroundColor: "rgb(255, 247, 237)", fontWeight: "600" }
-						: {};
 					const level = params.data?.level || "";
 					const category = params.data?.category || "";
 					const isStockCategory = category === "asset" || category === "liability";
 					if (level === "large") {
 						return {
-							...baseStyle,
 							backgroundColor: isStockCategory ? "rgb(239, 246, 255)" : "rgb(241, 245, 249)",
+							fontWeight: "600",
+							color: "rgb(15, 23, 42)",
 						};
 					}
-					return Object.keys(baseStyle).length > 0 ? baseStyle : undefined;
+
+					if (level === "medium") {
+						return {
+							backgroundColor: "rgb(248, 250, 252)",
+							fontWeight: "500",
+							color: "rgb(51, 65, 85)",
+						};
+					}
+
+					if (col.type === "fiveYear") {
+						return { backgroundColor: "rgb(255, 247, 237)", fontWeight: "600" };
+					}
+
+					if (col.type === "year") {
+						return { backgroundColor: "rgb(255, 251, 235)" };
+					}
+
+					return undefined;
 				},
 				headerClass: col.type === "fiveYear" ? "five-year-column-header" : undefined,
 				tooltipValueGetter: (params) => {
 					const level = params.data?.level || "";
-					if (level === "large") {
-						return "中項目の合計（自動計算）";
+					const category = params.data?.category || "";
+					let annualTooltip = "";
+					if (col.type === "year") {
+						annualTooltip = getAnnualTooltip(params.value as number | null | undefined, col.periodMonths);
+					} else if (col.type === "fiveYear") {
+						try {
+							const entriesMap = params.data?.entries as Map<string, any> | undefined;
+							let total = 0;
+							if (entriesMap && typeof entriesMap.get === "function") {
+								for (const ym of col.periodMonths) {
+									total += entriesMap.get(ym)?.value ?? 0;
+								}
+							}
+							annualTooltip = `5年総額 ${formatCurrency(total)}（${col.periodMonths.length}ヶ月展開）`;
+						} catch {
+							annualTooltip = getAnnualTooltip(params.value as number | null | undefined, col.periodMonths);
+						}
+					}
+
+					if (annualTooltip) {
+						return annualTooltip;
+					}
+
+					const autoCalcTooltip = getAutoCalcTooltip(level, category);
+					if (autoCalcTooltip) {
+						return autoCalcTooltip;
 					}
 					return "";
 				},
@@ -297,7 +349,10 @@ export function FinancialSpreadsheet({ scenarioId, onYearlyExpanded, onSaveError
 						}
 					}, 0);
 				},
-				cellClass: (params) => (params.data?.isAutoCalc ? "ag-cell-readonly" : ""),
+				cellClass: (params) => {
+					const level = params.data?.level || "";
+					return level === "small" ? "" : "ag-cell-readonly";
+				},
 			});
 		});
 

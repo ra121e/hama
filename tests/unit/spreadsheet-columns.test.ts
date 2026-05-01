@@ -12,7 +12,8 @@ describe("spreadsheet columns", () => {
 		expect(columns[12]?.type).toBe("total");
 		expect(columns[25]?.type).toBe("total");
 		expect(columns[38]?.type).toBe("total");
-		expect(columns.find((column) => column.type === "fiveYear")?.label).toContain("5年単位（年額）");
+		expect(columns.find((column) => column.type === "year")?.label).toContain("（年額）");
+		expect(columns.find((column) => column.type === "fiveYear")?.label).toContain("（年額）");
 	});
 
 	it("calculates subtotal columns as a sum and the grand total from all entries", () => {
@@ -37,5 +38,34 @@ describe("spreadsheet columns", () => {
 				type: "total",
 			}),
 		).toBe(60);
+	});
+
+	it("shows annual columns as annual amounts instead of monthly averages", () => {
+		const columns = generateSpreadsheetColumns(new Date(2026, 3, 1));
+		const yearColumn = columns.find((column) => column.type === "year");
+		const fiveYearColumn = columns.find((column) => column.type === "fiveYear");
+		const createEntries = (periodMonths: string[], perMonthValue = 10) =>
+			new Map<string, FinancialEntry>(
+				periodMonths.map((yearMonth, index) => [
+					yearMonth,
+					{ id: String(index + 1), scenarioId: "scenario", itemId: "item", yearMonth, value: perMonthValue, isExpanded: false, memo: null },
+				]),
+			);
+
+		expect(
+			calculateSpreadsheetColumnValue(createEntries(yearColumn?.periodMonths ?? []), {
+				id: "year_2027",
+				periodMonths: yearColumn?.periodMonths ?? [],
+				type: "year",
+			}),
+		).toBe(120);
+
+		expect(
+			calculateSpreadsheetColumnValue(createEntries(fiveYearColumn?.periodMonths ?? [], 10), {
+				id: "five_year_2036",
+				periodMonths: fiveYearColumn?.periodMonths ?? [],
+				type: "fiveYear",
+			}),
+		).toBe(120);
 	});
 });
