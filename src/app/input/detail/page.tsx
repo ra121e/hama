@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { FinancialItemManagerDialog } from "@/features/financial-detail/components/FinancialItemManagerDialog";
 import { useToast } from "@/components/ui/use-toast";
 import { FinancialSpreadsheet } from "@/features/financial-detail/components/FinancialSpreadsheet";
@@ -7,6 +8,8 @@ import { useProfileStore } from "@/store/profileStore";
 
 export default function DetailInputPage() {
   const activeScenarioId = useProfileStore((state) => state.activeScenarioId || "base");
+  const plans = useProfileStore((state) => state.plans);
+  const activePlan = plans.find((p) => p.id === activeScenarioId);
   const { toast } = useToast();
 
   return (
@@ -15,6 +18,11 @@ export default function DetailInputPage() {
         <div className="space-y-2">
           <p className="text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">詳細財務入力</p>
           <h1 className="text-3xl font-semibold tracking-tight">詳細財務入力</h1>
+          <div className="mt-1">
+            <Link href="/scenario" className="text-sm text-primary underline">
+              プラン: {activePlan ? activePlan.name : "ベースプラン"}
+            </Link>
+          </div>
           <p className="max-w-2xl text-sm text-muted-foreground">
             Phase F：スプレッドシートを中心に、月次・年次エントリをすっきり入力できる構成です。
           </p>

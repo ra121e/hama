@@ -8,10 +8,9 @@ import { HamaScore } from "@/features/charts/HamaScore";
 import { RadarChart } from "@/features/charts/RadarChart";
 // FinancialInput は MVP 互換でコードベースに残すが、UI からは非表示にする
 import { HappinessSlider } from "@/features/happiness/components/HappinessSlider";
-import { PlanSwitcher } from "@/features/plan/components/PlanSwitcher";
-import { TemplateSelector } from "@/features/plan/components/TemplateSelector";
 import { TimepointSelector } from "@/features/scenario/components/TimepointSelector";
 import { useProfileStore } from "@/store/profileStore";
+import { usePlanManager } from "@/features/plan/hooks/usePlanManager";
 
 const navItems = [
   { href: "/input", label: "入力画面へ" },
@@ -70,8 +69,10 @@ export default function Home() {
                   ) : null}
                 </CardHeader>
                 <CardContent className="space-y-5">
-                  <TemplateSelector />
-                  <PlanSwitcher />
+                  {/* シンプルなプラン選択ドロップダウン（ダッシュボードでは新規作成UIを表示しない） */}
+                  <div className="mb-3">
+                    <PlanSelector />
+                  </div>
                   <TimepointSelector />
                   <HappinessSlider />
                   {/* 簡易財務入力はフェーズFで UI から非表示。詳細入力への案内を表示 */}
@@ -138,5 +139,26 @@ export default function Home() {
         </ul>
       </nav>
     </main>
+  );
+}
+
+function PlanSelector() {
+  const { plans, activePlanId, setActivePlan } = usePlanManager();
+
+  return (
+    <div className="flex items-center gap-3">
+      <label className="text-sm text-muted-foreground">プラン</label>
+      <select
+        value={activePlanId}
+        onChange={(e) => setActivePlan(e.target.value)}
+        className="rounded-md border border-border bg-background px-2 py-1 text-sm"
+      >
+        {plans.map((p) => (
+          <option key={p.id} value={p.id}>
+            {p.name}
+          </option>
+        ))}
+      </select>
+    </div>
   );
 }
