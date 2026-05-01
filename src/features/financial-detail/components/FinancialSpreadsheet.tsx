@@ -13,7 +13,7 @@ import { aggregateBigCategory } from "@/shared/lib/financial-aggregator";
 ModuleRegistry.registerModules([AllCommunityModule]);
 
 interface Props {
-	scenarioId: string;
+	scenarioId?: string | null;
 	onYearlyExpanded?: (expandedCount: number) => void;
 	onSaveError?: (message: string) => void;
 }
@@ -358,7 +358,7 @@ export function FinancialSpreadsheet({ scenarioId, onYearlyExpanded, onSaveError
 		});
 
 		return cols;
-	}, [columns, savePeriodValue]);
+	}, [columns, savePeriodValue, onSaveError, onYearlyExpanded]);
 
 	if (isLoading && preparedRowData.length === 0) {
 		return (

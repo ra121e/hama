@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import type { FinancialItem, FinancialEntry, FinancialAutoCalc, FinancialItemCategory } from "@/entities/financial-item";
 import { expandYearlyToMonthly } from "@/features/financial-detail/engine/expandYearlyToMonthly";
 import { useFinancialItems } from "@/features/financial-detail/hooks/useFinancialItems";
@@ -9,6 +9,7 @@ import { generateSpreadsheetColumns } from "@/features/financial-detail/lib/spre
 import { aggregateFinancialDataByTimepoints } from "@/shared/lib/financial-aggregator";
 import { useProfileStore } from "@/store/profileStore";
 import { buildRowTree, type SpreadsheetRow } from "@/features/financial-detail/lib/buildRowTree";
+import { resolveFinancialDetailScenarioId } from "@/features/financial-detail/lib/activeScenario";
 export type { SpreadsheetColumn } from "@/features/financial-detail/lib/spreadsheet";
 
 type SavePeriodValueOptions = {
@@ -40,10 +41,13 @@ type LoadState = {
 };
 
 
-export function useFinancialSpreadsheet(scenarioId: string | null) {
+export function useFinancialSpreadsheet(scenarioId?: string | null) {
 	// 共有の項目読み込みフック
 	const { items, isLoading: itemsLoading, error: itemsError } = useFinancialItems();
+	const activeScenarioId = useProfileStore((state) => state.activeScenarioId);
 	const cacheFinancialData = useProfileStore((state) => state.cacheFinancialData);
+	const resolvedScenarioId = resolveFinancialDetailScenarioId(scenarioId, activeScenarioId);
+	const latestScenarioIdRef = useRef<string | null>(resolvedScenarioId);
 
 	const [state, setState] = useState<LoadState>({
 		scenarioId: null,
@@ -56,8 +60,14 @@ export function useFinancialSpreadsheet(scenarioId: string | null) {
 		error: null,
 	});
 
+	useEffect(() => {
+		latestScenarioIdRef.current = resolvedScenarioId;
+	}, [resolvedScenarioId]);
+
 	const loadData = useCallback(async () => {
-		if (!scenarioId) {
+		const targetScenarioId = resolvedScenarioId;
+
+		if (!targetScenarioId) {
 			setState((current) => ({
 				...current,
 				isLoading: false,
@@ -72,7 +82,7 @@ export function useFinancialSpreadsheet(scenarioId: string | null) {
 		}
 
 		if (itemsError) {
-			cacheFinancialData(scenarioId, null);
+			cacheFinancialData(targetScenarioId, null);
 			setState((current) => ({
 				...current,
 				isLoading: false,
@@ -86,7 +96,7 @@ export function useFinancialSpreadsheet(scenarioId: string | null) {
 		try {
 			// Fetch financial entries for scenario
 			const entriesResponse = await fetch(
-				`/api/financial-entries?scenarioId=${encodeURIComponent(scenarioId)}`,
+				`/api/financial-entries?scenarioId=${encodeURIComponent(targetScenarioId)}`,
 				{ cache: "no-store" }
 			);
 			if (!entriesResponse.ok) {
@@ -101,10 +111,14 @@ export function useFinancialSpreadsheet(scenarioId: string | null) {
 			const columns = generateSpreadsheetColumns();
 			const rows = buildRowTree(items, entriesPayload.entries);
 			const aggregated = aggregateFinancialDataByTimepoints(entriesPayload.entries, items);
-			cacheFinancialData(scenarioId, aggregated.hasDetailedData ? aggregated.data : null);
+			cacheFinancialData(targetScenarioId, aggregated.hasDetailedData ? aggregated.data : null);
+
+			if (latestScenarioIdRef.current !== targetScenarioId) {
+				return;
+			}
 
 			setState({
-				scenarioId,
+				scenarioId: targetScenarioId,
 				rows,
 				columns,
 				items,
@@ -116,15 +130,16 @@ export function useFinancialSpreadsheet(scenarioId: string | null) {
 		} catch (error) {
 			setState((current) => ({
 				...current,
+				scenarioId: targetScenarioId,
 				isLoading: false,
 				error: error instanceof Error ? error.message : "データ読み込みに失敗しました",
 			}));
 		}
-	}, [scenarioId, items, itemsLoading, itemsError, cacheFinancialData]);
+	}, [resolvedScenarioId, items, itemsLoading, itemsError, cacheFinancialData]);
 
 	useEffect(() => {
-		loadData();
-	}, [scenarioId, items, itemsLoading, itemsError, loadData]);
+		void loadData();
+	}, [resolvedScenarioId, items, itemsLoading, itemsError, loadData]);
 
 	const updateEntry = useCallback(
 		async (entryId: string, value: number, memo?: string) => {
@@ -157,7 +172,7 @@ export function useFinancialSpreadsheet(scenarioId: string | null) {
 
 	const createEntry = useCallback(
 		async (itemId: string, yearMonth: string, value: number) => {
-			if (!scenarioId) {
+			if (!resolvedScenarioId) {
 				console.error("scenarioId is not available");
 				return;
 			}
@@ -167,7 +182,7 @@ export function useFinancialSpreadsheet(scenarioId: string | null) {
 					method: "POST",
 					headers: { "Content-Type": "application/json" },
 					body: JSON.stringify({
-						scenarioId,
+						scenarioId: resolvedScenarioId,
 						itemId,
 						yearMonth,
 						value,
@@ -187,7 +202,7 @@ export function useFinancialSpreadsheet(scenarioId: string | null) {
 				console.error("Error creating entry:", error);
 			}
 		},
-		[scenarioId, loadData]
+		[resolvedScenarioId, loadData]
 	);
 
 	const savePeriodValue = useCallback(
@@ -197,7 +212,7 @@ export function useFinancialSpreadsheet(scenarioId: string | null) {
 			value: number,
 			options?: SavePeriodValueOptions
 		): Promise<SavePeriodValueResult> => {
-			if (!scenarioId) {
+			if (!resolvedScenarioId) {
 				return {
 					ok: false,
 					expandedCount: 0,
@@ -251,7 +266,7 @@ export function useFinancialSpreadsheet(scenarioId: string | null) {
 					method: "POST",
 					headers: { "Content-Type": "application/json" },
 					body: JSON.stringify({
-						scenarioId,
+						scenarioId: resolvedScenarioId,
 						itemId,
 						entries,
 					}),
@@ -285,7 +300,7 @@ export function useFinancialSpreadsheet(scenarioId: string | null) {
 				};
 			}
 		},
-		[scenarioId, loadData]
+		[resolvedScenarioId, loadData]
 	);
 
 	return {

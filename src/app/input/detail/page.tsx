@@ -3,10 +3,10 @@
 import { FinancialItemManagerDialog } from "@/features/financial-detail/components/FinancialItemManagerDialog";
 import { useToast } from "@/components/ui/use-toast";
 import { FinancialSpreadsheet } from "@/features/financial-detail/components/FinancialSpreadsheet";
-import { useScenarioStore } from "@/store/scenarioStore";
+import { useProfileStore } from "@/store/profileStore";
 
 export default function DetailInputPage() {
-  const selectedScenarioId = useScenarioStore((state) => state.selectedScenarioId);
+  const activeScenarioId = useProfileStore((state) => state.activeScenarioId || "base");
   const { toast } = useToast();
 
   return (
@@ -26,7 +26,7 @@ export default function DetailInputPage() {
       <section className="rounded-3xl border border-border bg-card/80 p-4 shadow-sm sm:p-6">
         <div className="overflow-x-auto">
           <FinancialSpreadsheet
-            scenarioId={selectedScenarioId}
+            scenarioId={activeScenarioId}
             onYearlyExpanded={(expandedCount) => {
               const description =
                 expandedCount === 60

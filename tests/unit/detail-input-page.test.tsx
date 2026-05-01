@@ -11,4 +11,12 @@ describe("detail input page", () => {
 		expect(source).toContain("FinancialSpreadsheet");
 		expect(source).not.toContain("AggregateDebugPanel");
 	});
+
+	it("uses profileStore active scenario as the spreadsheet target plan", () => {
+		const source = readFileSync(join(process.cwd(), "src", "app", "input", "detail", "page.tsx"), "utf8");
+
+		expect(source).toContain("useProfileStore");
+		expect(source).toContain("activeScenarioId");
+		expect(source).not.toContain("useScenarioStore");
+	});
 });
