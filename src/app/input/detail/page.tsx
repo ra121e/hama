@@ -1,10 +1,8 @@
 "use client";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { FinancialItemManagerDialog } from "@/features/financial-detail/components/FinancialItemManagerDialog";
 import { useToast } from "@/components/ui/use-toast";
-import { FinancialItemManager } from "@/features/financial-detail/components/FinancialItemManager";
 import { FinancialSpreadsheet } from "@/features/financial-detail/components/FinancialSpreadsheet";
-import { AggregateDebugPanel } from "@/features/financial-detail/components/AggregateDebugPanel";
 import { useScenarioStore } from "@/store/scenarioStore";
 
 export default function DetailInputPage() {
@@ -12,64 +10,44 @@ export default function DetailInputPage() {
   const { toast } = useToast();
 
   return (
-    <main className="mx-auto flex w-full flex-col gap-6 px-6 py-10 sm:px-8">
-      <header className="space-y-2">
-        <h1 className="text-3xl font-semibold tracking-tight">詳細財務入力</h1>
-        <p className="text-sm text-muted-foreground">
-          Phase F：階層型財務項目と月次・年次エントリを一元管理するスプレッドシートUIです。
-        </p>
+    <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
+      <header className="flex flex-col gap-4 rounded-3xl border border-border bg-card/70 px-6 py-5 shadow-sm backdrop-blur sm:flex-row sm:items-end sm:justify-between">
+        <div className="space-y-2">
+          <p className="text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">詳細財務入力</p>
+          <h1 className="text-3xl font-semibold tracking-tight">詳細財務入力</h1>
+          <p className="max-w-2xl text-sm text-muted-foreground">
+            Phase F：スプレッドシートを中心に、月次・年次エントリをすっきり入力できる構成です。
+          </p>
+        </div>
+
+        <FinancialItemManagerDialog />
       </header>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* 左パネル：項目管理 */}
-        <Card className="lg:col-span-1 h-fit">
-          <CardHeader>
-            <CardTitle className="text-lg">財務項目</CardTitle>
-            <CardDescription>項目を追加・編集・削除</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <FinancialItemManager />
-          </CardContent>
-        </Card>
+      <section className="rounded-3xl border border-border bg-card/80 p-4 shadow-sm sm:p-6">
+        <div className="overflow-x-auto">
+          <FinancialSpreadsheet
+            scenarioId={selectedScenarioId}
+            onYearlyExpanded={(expandedCount) => {
+              const description =
+                expandedCount === 60
+                  ? "年額を60ヶ月分に展開して保存しました。"
+                  : `${expandedCount}ヶ月分を展開して保存しました。`;
 
-        {/* 右パネル：スプレッドシート */}
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="text-lg">月次・年次入力</CardTitle>
-            <CardDescription>
-              直近36ヶ月は月次入力、37ヶ月以降は年次入力に対応
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <FinancialSpreadsheet
-                scenarioId={selectedScenarioId}
-                onYearlyExpanded={(expandedCount) => {
-                  const description =
-                    expandedCount === 60
-                      ? "年額を60ヶ月分に展開して保存しました。"
-                      : `${expandedCount}ヶ月分を展開して保存しました。`;
-
-                  toast({
-                    title: "保存しました",
-                    description,
-                  });
-                }}
-                onSaveError={(message) => {
-                  toast({
-                    variant: "destructive",
-                    title: "保存に失敗しました",
-                    description: message,
-                  });
-                }}
-              />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* F06開発用：集約デバッグパネル */}
-      <AggregateDebugPanel scenarioId={selectedScenarioId} visible={true} />
+              toast({
+                title: "保存しました",
+                description,
+              });
+            }}
+            onSaveError={(message) => {
+              toast({
+                variant: "destructive",
+                title: "保存に失敗しました",
+                description: message,
+              });
+            }}
+          />
+        </div>
+      </section>
     </main>
   );
 }

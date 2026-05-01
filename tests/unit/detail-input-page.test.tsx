@@ -7,8 +7,8 @@ describe("detail input page", () => {
 		const source = readFileSync(join(process.cwd(), "src", "app", "input", "detail", "page.tsx"), "utf8");
 
 		expect(source).toContain("詳細財務入力");
-		expect(source).toContain("FinancialItemManager");
+		expect(source).toContain("FinancialItemManagerDialog");
 		expect(source).toContain("FinancialSpreadsheet");
-		expect(source).toContain("AggregateDebugPanel");
+		expect(source).not.toContain("AggregateDebugPanel");
 	});
 });
