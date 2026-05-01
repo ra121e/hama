@@ -1,9 +1,7 @@
 "use client";
 
-import { useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { calcHamaScoreFromProfile } from "@/shared/lib/hama-score";
 import { useProfileStore } from "@/store/profileStore";
 
 const scoreTone = (score: number) => {
@@ -43,15 +41,10 @@ const scoreTone = (score: number) => {
 };
 
 export function HamaScore() {
-  const profile = useProfileStore((state) => state.profile);
   const storedScore = useProfileStore((state) => state.hamaScore);
 
-  const computedScore = useMemo(() => calcHamaScoreFromProfile(profile), [profile]);
-  const score = useMemo(
-    () => Math.max(0, Math.min(100, Number.isFinite(computedScore) ? computedScore : storedScore)),
-    [computedScore, storedScore],
-  );
-  const displayScore = useMemo(() => Math.round(score), [score]);
+  const score = Number.isFinite(storedScore) ? storedScore : 0;
+  const displayScore = Math.round(Math.max(0, Math.min(100, score)));
 
   const tone = scoreTone(displayScore);
   const gradient = `conic-gradient(${tone.ringColor} ${displayScore * 3.6}deg, rgba(161,161,170,0.18) 0deg)`;

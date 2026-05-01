@@ -19,10 +19,38 @@
  * - 20y：240ヶ月後
  */
 
-import type { FinancialEntry } from "@/entities/financial-item";
+import type { FinancialEntry, FinancialItem } from "@/entities/financial-item";
 
 export type Timepoint = "now" | "5y" | "10y" | "20y";
 export type AggregationType = "balance" | "flow";
+export type FinancialData = {
+  assets: number;
+  income: number;
+  expense: number;
+};
+
+export type FinancialDataByTimepoint = Record<Timepoint, FinancialData>;
+
+export type AggregatedFinancialData = {
+  data: FinancialDataByTimepoint;
+  hasDetailedData: boolean;
+};
+
+const createEmptyFinancialData = (): FinancialData => ({
+  assets: 0,
+  income: 0,
+  expense: 0,
+});
+
+const createEmptyFinancialDataByTimepoint = (): FinancialDataByTimepoint => ({
+  now: createEmptyFinancialData(),
+  "5y": createEmptyFinancialData(),
+  "10y": createEmptyFinancialData(),
+  "20y": createEmptyFinancialData(),
+});
+
+const isFiniteNumber = (value: unknown): value is number =>
+  typeof value === "number" && Number.isFinite(value);
 
 /**
  * YYYY-MM形式の日付文字列を Date に変換（月初1日として扱う）
@@ -126,7 +154,7 @@ export function aggregateToTimepoint(
     if (type === "balance") {
       // 残高系：最新月の月末残高を使用
       const entry = entries.find((e) => e.yearMonth === baseMonth);
-      return entry ? entry.value : 0;
+      return isFiniteNumber(entry?.value) ? entry.value : 0;
     } else {
       // フロー系：現在月から将来12ヶ月の合計を使用（Forward 12 Months）
       // 基準月は、データ内の最新月とシステム現在月のうち小さい方（将来にあるデータがあっても現在月から開始する）
@@ -135,13 +163,15 @@ export function aggregateToTimepoint(
 
       // フォールバックはデータ内の最新月の値（存在しない場合は平均値）
       const latestEntry = entries.find((e) => e.yearMonth === baseMonth);
-      const fallbackMonthly = latestEntry ? latestEntry.value : Math.round(entries.reduce((s, e) => s + e.value, 0) / entries.length);
+      const fallbackMonthly = isFiniteNumber(latestEntry?.value)
+        ? latestEntry.value
+        : Math.round(entries.reduce((s, e) => s + (isFiniteNumber(e.value) ? e.value : 0), 0) / entries.length);
 
       let sum = 0;
       for (let i = 0; i < 12; i++) {
         const month = addMonths(effectiveBase, i);
         const entry = entries.find((e) => e.yearMonth === month);
-        sum += entry ? entry.value : fallbackMonthly;
+        sum += isFiniteNumber(entry?.value) ? entry.value : fallbackMonthly;
       }
       return sum;
     }
@@ -168,13 +198,13 @@ export function aggregateToTimepoint(
     // - 対象月のデータがあれば使用
     // - なければ、最新月の値を延伸（将来予測）
     const entry = entries.find((e) => e.yearMonth === targetMonth);
-    if (entry) {
+    if (isFiniteNumber(entry?.value)) {
       return entry.value;
     }
 
     // 対象月が未来で存在しない場合、最新月の値を使用
     const latestEntry = entries.find((e) => e.yearMonth === baseMonth);
-    return latestEntry ? latestEntry.value : 0;
+    return isFiniteNumber(latestEntry?.value) ? latestEntry.value : 0;
   } else {
     // フロー系：
     // - 対象時点から連続12ヶ月の合計を返す
@@ -193,6 +223,100 @@ export function aggregateToTimepoint(
     const avgMonthly = recent12Months.reduce((sum, e) => sum + e.value, 0) / recent12Months.length;
     return Math.round(avgMonthly * 12); // 年額に変換
   }
+}
+
+export function aggregateFinancialDataByTimepoints(
+  entries: FinancialEntry[],
+  items: FinancialItem[],
+): AggregatedFinancialData {
+  const data = createEmptyFinancialDataByTimepoint();
+
+  if (entries.length === 0 || items.length === 0) {
+    return { data, hasDetailedData: false };
+  }
+
+  const byItemId = new Map<string, FinancialEntry[]>();
+  for (const entry of entries) {
+    if (!byItemId.has(entry.itemId)) {
+      byItemId.set(entry.itemId, []);
+    }
+    byItemId.get(entry.itemId)!.push(entry);
+  }
+
+  const itemById = new Map(items.map((item) => [item.id, item]));
+  let hasDetailedData = false;
+
+  for (const [itemId, itemEntries] of byItemId.entries()) {
+    const item = itemById.get(itemId);
+    if (!item || itemEntries.length === 0) {
+      continue;
+    }
+
+    hasDetailedData = true;
+    const type = item.category === "asset" || item.category === "liability" ? "balance" : "flow";
+    const timepoints = aggregateTo4Timepoints(itemEntries, type);
+
+    if (item.category === "asset") {
+      data.now.assets += timepoints.now;
+      data["5y"].assets += timepoints["5y"];
+      data["10y"].assets += timepoints["10y"];
+      data["20y"].assets += timepoints["20y"];
+    } else if (item.category === "liability") {
+      data.now.assets -= timepoints.now;
+      data["5y"].assets -= timepoints["5y"];
+      data["10y"].assets -= timepoints["10y"];
+      data["20y"].assets -= timepoints["20y"];
+    } else if (item.category === "income") {
+      data.now.income += timepoints.now;
+      data["5y"].income += timepoints["5y"];
+      data["10y"].income += timepoints["10y"];
+      data["20y"].income += timepoints["20y"];
+    } else if (item.category === "expense") {
+      data.now.expense += timepoints.now;
+      data["5y"].expense += timepoints["5y"];
+      data["10y"].expense += timepoints["10y"];
+      data["20y"].expense += timepoints["20y"];
+    }
+  }
+
+  return { data, hasDetailedData };
+}
+
+export async function getAggregatedFinancialData(
+  planId: string,
+  timepoint: Timepoint,
+): Promise<FinancialData | null> {
+  const profileResponse = await fetch("/api/profile", { cache: "no-store" });
+
+  if (!profileResponse.ok) {
+    throw new Error(`Failed to load profile: ${profileResponse.status}`);
+  }
+
+  const profilePayload = (await profileResponse.json()) as { profile: { id: string } };
+  const profileId = profilePayload.profile.id;
+
+  const [itemsResponse, entriesResponse] = await Promise.all([
+    fetch(`/api/financial-items?profileId=${encodeURIComponent(profileId)}`, { cache: "no-store" }),
+    fetch(`/api/financial-entries?scenarioId=${encodeURIComponent(planId)}`, { cache: "no-store" }),
+  ]);
+
+  if (!itemsResponse.ok) {
+    throw new Error(`Failed to load financial items: ${itemsResponse.status}`);
+  }
+
+  if (!entriesResponse.ok) {
+    throw new Error(`Failed to load financial entries: ${entriesResponse.status}`);
+  }
+
+  const itemsPayload = (await itemsResponse.json()) as { items: FinancialItem[] };
+  const entriesPayload = (await entriesResponse.json()) as { entries: FinancialEntry[] };
+  const aggregated = aggregateFinancialDataByTimepoints(entriesPayload.entries, itemsPayload.items);
+
+  if (!aggregated.hasDetailedData) {
+    return null;
+  }
+
+  return aggregated.data[timepoint];
 }
 
 /**

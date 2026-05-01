@@ -10,11 +10,13 @@ import {
 	type Timepoint,
 } from "@/entities/profile";
 import { calcHamaScoreFromProfile } from "@/shared/lib/hama-score";
+import type { FinancialData, FinancialDataByTimepoint } from "@/shared/lib/financial-aggregator";
 import type { Snapshot } from "@/entities/scenario";
 import type { PlanSummary } from "@/features/plan/types";
 import type { LifecycleTemplate } from "@/features/plan/lib/lifecycleTemplates";
 
 type ScenarioSnapshotState = Partial<Record<Timepoint, Snapshot[]>>;
+type ScenarioFinancialState = Partial<Record<Timepoint, FinancialData>>;
 
 type ServerPayload = {
 	profile: {
@@ -48,6 +50,7 @@ type ProfileStoreState = {
 	activeTimepoint: Timepoint;
 	plans: PlanSummary[];
 	snapshotsByScenario: Record<string, ScenarioSnapshotState>;
+	financialDataByScenario: Record<string, ScenarioFinancialState>;
 	isHydrated: boolean;
 	isLoading: boolean;
 	isSaving: boolean;
@@ -65,6 +68,7 @@ type ProfileStoreState = {
 	updateHappiness: (itemId: HappinessItemId, value: number, memo?: string) => void;
 	updateSettings: (patch: Partial<ProfileSettings>) => void;
 	setSnapshots: (scenarioId: string, timepoint: Timepoint, snapshots: Snapshot[]) => void;
+	cacheFinancialData: (scenarioId: string, data: FinancialDataByTimepoint | null) => void;
 	syncCurrentInputsToSnapshot: (scenarioId: string, timepoint: Timepoint) => void;
 	recalculateHamaScore: () => void;
 	loadProfileFromDb: () => Promise<void>;
@@ -189,6 +193,23 @@ const withUpdatedTimestamp = (profile: Profile): Profile => ({
 	updatedAt: new Date().toISOString(),
 });
 
+const resolveDetailedFinancialData = (
+	financialDataByScenario: Record<string, ScenarioFinancialState>,
+	activeScenarioId: string,
+	activeTimepoint: Timepoint,
+): FinancialData | undefined => financialDataByScenario[activeScenarioId]?.[activeTimepoint];
+
+const calcHamaScoreForState = (
+	profile: Profile,
+	financialDataByScenario: Record<string, ScenarioFinancialState>,
+	activeScenarioId: string,
+	activeTimepoint: Timepoint,
+): number =>
+	calcHamaScoreFromProfile(
+		profile,
+		resolveDetailedFinancialData(financialDataByScenario, activeScenarioId, activeTimepoint),
+	);
+
 const normalizeDisplayUnit = (value: string): DisplayUnit => {
 	if (value === "yen" || value === "man") {
 		return value;
@@ -288,11 +309,12 @@ const readApiErrorMessage = async (response: Response, fallback: string) => {
 
 export const useProfileStore = create<ProfileStoreState>((set, get) => ({
 	profile: initialProfile,
-	hamaScore: calcHamaScoreFromProfile(initialProfile),
+	hamaScore: calcHamaScoreForState(initialProfile, {}, "base", "now"),
 	activeScenarioId: "base",
 	activeTimepoint: "now",
 	plans: [{ id: "base", name: "ベースプラン", type: "base", isDefault: true, createdAt: new Date().toISOString() }],
 	snapshotsByScenario: {},
+	financialDataByScenario: {},
 	isHydrated: false,
 	isLoading: false,
 	isSaving: false,
@@ -311,7 +333,12 @@ export const useProfileStore = create<ProfileStoreState>((set, get) => ({
 			return {
 				activeScenarioId: scenarioId,
 				profile: nextProfile,
-				hamaScore: calcHamaScoreFromProfile(nextProfile),
+				hamaScore: calcHamaScoreForState(
+					nextProfile,
+					state.financialDataByScenario,
+					scenarioId,
+					state.activeTimepoint,
+				),
 			};
 		});
 	},
@@ -336,7 +363,12 @@ export const useProfileStore = create<ProfileStoreState>((set, get) => ({
 			return {
 				activeTimepoint: timepoint,
 				profile: nextProfile,
-				hamaScore: calcHamaScoreFromProfile(nextProfile),
+				hamaScore: calcHamaScoreForState(
+					nextProfile,
+					state.financialDataByScenario,
+					state.activeScenarioId,
+					timepoint,
+				),
 				snapshotsByScenario: hasTargetSnapshots
 					? state.snapshotsByScenario
 					: {
@@ -369,7 +401,12 @@ export const useProfileStore = create<ProfileStoreState>((set, get) => ({
 			return {
 				profile: nextProfile,
 				activeTimepoint: targetTimepoint,
-				hamaScore: calcHamaScoreFromProfile(nextProfile),
+				hamaScore: calcHamaScoreForState(
+					nextProfile,
+					state.financialDataByScenario,
+					state.activeScenarioId,
+					targetTimepoint,
+				),
 				snapshotsByScenario: {
 					...state.snapshotsByScenario,
 					[state.activeScenarioId]: {
@@ -499,7 +536,12 @@ export const useProfileStore = create<ProfileStoreState>((set, get) => ({
 
 			return {
 				profile: nextProfile,
-				hamaScore: calcHamaScoreFromProfile(nextProfile),
+				hamaScore: calcHamaScoreForState(
+					nextProfile,
+					state.financialDataByScenario,
+					state.activeScenarioId,
+					state.activeTimepoint,
+				),
 				snapshotsByScenario: {
 					...state.snapshotsByScenario,
 					[state.activeScenarioId]: {
@@ -536,7 +578,12 @@ export const useProfileStore = create<ProfileStoreState>((set, get) => ({
 
 				return {
 					profile: nextProfile,
-					hamaScore: calcHamaScoreFromProfile(nextProfile),
+					hamaScore: calcHamaScoreForState(
+						nextProfile,
+						state.financialDataByScenario,
+						state.activeScenarioId,
+						state.activeTimepoint,
+					),
 					snapshotsByScenario: {
 						...state.snapshotsByScenario,
 						[state.activeScenarioId]: {
@@ -560,7 +607,12 @@ export const useProfileStore = create<ProfileStoreState>((set, get) => ({
 
 			return {
 				profile: nextProfile,
-				hamaScore: calcHamaScoreFromProfile(nextProfile),
+				hamaScore: calcHamaScoreForState(
+					nextProfile,
+					state.financialDataByScenario,
+					state.activeScenarioId,
+					state.activeTimepoint,
+				),
 			};
 		});
 	},
@@ -577,6 +629,28 @@ export const useProfileStore = create<ProfileStoreState>((set, get) => ({
 		}));
 	},
 
+	cacheFinancialData: (scenarioId, data) => {
+		set((state) => {
+			const nextFinancialDataByScenario =
+				data === null
+					? Object.fromEntries(Object.entries(state.financialDataByScenario).filter(([key]) => key !== scenarioId))
+					: {
+						...state.financialDataByScenario,
+						[scenarioId]: data,
+					};
+
+			return {
+				financialDataByScenario: nextFinancialDataByScenario,
+				hamaScore: calcHamaScoreForState(
+					state.profile,
+					nextFinancialDataByScenario,
+					state.activeScenarioId,
+					state.activeTimepoint,
+				),
+			};
+		});
+	},
+
 	syncCurrentInputsToSnapshot: (scenarioId, timepoint) => {
 		const profile = get().profile;
 		const snapshots = createSnapshotsFromProfile(profile, scenarioId, timepoint);
@@ -584,8 +658,15 @@ export const useProfileStore = create<ProfileStoreState>((set, get) => ({
 	},
 
 	recalculateHamaScore: () => {
-		const profile = get().profile;
-		set({ hamaScore: calcHamaScoreFromProfile(profile) });
+		const state = get();
+		set({
+			hamaScore: calcHamaScoreForState(
+				state.profile,
+				state.financialDataByScenario,
+				state.activeScenarioId,
+				state.activeTimepoint,
+			),
+		});
 	},
 
 	loadProfileFromDb: async () => {
@@ -616,7 +697,8 @@ export const useProfileStore = create<ProfileStoreState>((set, get) => ({
 			set({
 				...hydrated,
 				profile: nextProfile,
-				hamaScore: calcHamaScoreFromProfile(nextProfile),
+				financialDataByScenario: {},
+				hamaScore: calcHamaScoreForState(nextProfile, {}, hydrated.activeScenarioId, currentTimepoint),
 				activeTimepoint: currentTimepoint,
 				isHydrated: true,
 				isLoading: false,
@@ -686,7 +768,8 @@ export const useProfileStore = create<ProfileStoreState>((set, get) => ({
 					set({
 						...hydrated,
 						profile: nextProfile,
-						hamaScore: calcHamaScoreFromProfile(nextProfile),
+						financialDataByScenario: {},
+						hamaScore: calcHamaScoreForState(nextProfile, {}, hydrated.activeScenarioId, currentTimepoint),
 						activeTimepoint: currentTimepoint,
 						isSaving: false,
 						lastSavedAt: new Date().toISOString(),
@@ -713,7 +796,8 @@ export const useProfileStore = create<ProfileStoreState>((set, get) => ({
 
 		set({
 			profile: nextProfile,
-			hamaScore: calcHamaScoreFromProfile(nextProfile),
+			financialDataByScenario: {},
+			hamaScore: calcHamaScoreForState(nextProfile, {}, "base", "now"),
 			activeScenarioId: "base",
 			activeTimepoint: "now",
 			plans: [{ id: "base", name: "ベースプラン", type: "base", isDefault: true, createdAt: new Date().toISOString() }],

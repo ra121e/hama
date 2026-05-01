@@ -6,6 +6,8 @@ import { expandYearlyToMonthly } from "@/features/financial-detail/engine/expand
 import { useFinancialItems } from "@/features/financial-detail/hooks/useFinancialItems";
 import type { SpreadsheetColumn } from "@/features/financial-detail/lib/spreadsheet";
 import { generateSpreadsheetColumns } from "@/features/financial-detail/lib/spreadsheet";
+import { aggregateFinancialDataByTimepoints } from "@/shared/lib/financial-aggregator";
+import { useProfileStore } from "@/store/profileStore";
 export type { SpreadsheetColumn } from "@/features/financial-detail/lib/spreadsheet";
 
 export type SpreadsheetRow = {
@@ -150,6 +152,7 @@ const buildRowTree = (
 export function useFinancialSpreadsheet(scenarioId: string | null) {
 	// 共有の項目読み込みフック
 	const { items, isLoading: itemsLoading, error: itemsError } = useFinancialItems();
+	const cacheFinancialData = useProfileStore((state) => state.cacheFinancialData);
 
 	const [state, setState] = useState<LoadState>({
 		scenarioId: null,
@@ -178,6 +181,7 @@ export function useFinancialSpreadsheet(scenarioId: string | null) {
 		}
 
 		if (itemsError) {
+			cacheFinancialData(scenarioId, null);
 			setState((current) => ({
 				...current,
 				isLoading: false,
@@ -205,6 +209,8 @@ export function useFinancialSpreadsheet(scenarioId: string | null) {
 
 			const columns = generateSpreadsheetColumns();
 			const rows = buildRowTree(items, entriesPayload.entries);
+			const aggregated = aggregateFinancialDataByTimepoints(entriesPayload.entries, items);
+			cacheFinancialData(scenarioId, aggregated.hasDetailedData ? aggregated.data : null);
 
 			setState({
 				scenarioId,
@@ -223,7 +229,7 @@ export function useFinancialSpreadsheet(scenarioId: string | null) {
 				error: error instanceof Error ? error.message : "データ読み込みに失敗しました",
 			}));
 		}
-	}, [scenarioId, items, itemsLoading, itemsError]);
+	}, [scenarioId, items, itemsLoading, itemsError, cacheFinancialData]);
 
 	useEffect(() => {
 		loadData();
