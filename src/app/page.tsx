@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { DualAxisChart } from "@/features/charts/DualAxisChart";
 import { HamaScore } from "@/features/charts/HamaScore";
 import { RadarChart } from "@/features/charts/RadarChart";
-import { FinancialInput } from "@/features/financial/components/FinancialInput";
+// FinancialInput は MVP 互換でコードベースに残すが、UI からは非表示にする
 import { HappinessSlider } from "@/features/happiness/components/HappinessSlider";
 import { PlanSwitcher } from "@/features/plan/components/PlanSwitcher";
 import { TemplateSelector } from "@/features/plan/components/TemplateSelector";
@@ -74,7 +74,16 @@ export default function Home() {
                   <PlanSwitcher />
                   <TimepointSelector />
                   <HappinessSlider />
-                  <FinancialInput />
+                  {/* 簡易財務入力はフェーズFで UI から非表示。詳細入力への案内を表示 */}
+                  <div className="mt-2">
+                    <Link
+                      href="/input/detail"
+                      className="inline-flex items-center rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-white shadow-sm hover:opacity-95"
+                    >
+                      詳細財務入力へ移動
+                    </Link>
+                    <p className="mt-2 text-xs text-muted-foreground">詳細な財務入力は /input/detail で行ってください。</p>
+                  </div>
                 </CardContent>
               </Card>
             </div>

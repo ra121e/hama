@@ -2,7 +2,6 @@
 
 import { useEffect } from "react";
 import Link from "next/link";
-import { FinancialInput } from "@/features/financial/components/FinancialInput";
 import { HappinessSlider } from "@/features/happiness/components/HappinessSlider";
 import { PlanSwitcher } from "@/features/plan/components/PlanSwitcher";
 import { TemplateSelector } from "@/features/plan/components/TemplateSelector";
@@ -61,7 +60,16 @@ export default function InputPage() {
         <div className="space-y-6">
           <TemplateSelector />
           <PlanSwitcher />
-          <FinancialInput />
+          {/* 簡易財務入力は UI から非表示。詳細入力へ誘導する大きな CTA を配置 */}
+          <div className="rounded-md border border-border bg-card px-6 py-6 text-center">
+            <h2 className="text-lg font-medium">詳細財務入力へ移動</h2>
+            <p className="mt-2 text-sm text-muted-foreground">詳細かつ正確な財務入力は詳細入力画面で行ってください。</p>
+            <div className="mt-4">
+              <Link href="/input/detail" className="inline-flex items-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-white shadow-sm hover:opacity-95">
+                詳細財務入力へ進む
+              </Link>
+            </div>
+          </div>
           <HappinessSlider />
         </div>
       ) : (
