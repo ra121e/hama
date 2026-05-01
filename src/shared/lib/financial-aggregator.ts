@@ -137,6 +137,8 @@ export function aggregateBigCategory(
     return getLatestFiniteEntry(entryList)?.value ?? 0;
   }
 
+  // 指定期間がある場合は、期間内の最新の値のみを返す。
+  // 期間内に値がない場合は 0 を返し、未来のエントリを過去期間へ影響させない。
   for (let index = periodMonths.length - 1; index >= 0; index -= 1) {
     const value = monthlyMap.get(periodMonths[index]);
     if (isFiniteNumber(value)) {
@@ -144,8 +146,7 @@ export function aggregateBigCategory(
     }
   }
 
-  const latestEntry = getLatestFiniteEntry(entryList);
-  return latestEntry?.value ?? 0;
+  return 0;
 }
 
 export type AggregatableRowLike = {

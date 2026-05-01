@@ -325,6 +325,7 @@ export function FinancialSpreadsheet({ scenarioId, onYearlyExpanded, onSaveError
 						category: row.category,
 						autoCalc: row.autoCalc,
 						rate: row.rate,
+						startMonth: col.periodMonths[0] ?? null,
 					});
 
 					if (!result.ok && result.error && onSaveError) {

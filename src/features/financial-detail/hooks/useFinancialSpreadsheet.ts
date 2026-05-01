@@ -17,6 +17,9 @@ type SavePeriodValueOptions = {
 	category?: SpreadsheetRow["category"];
 	autoCalc?: SpreadsheetRow["autoCalc"];
 	rate?: number | null;
+	// The first yearMonth of the column where the user edited (e.g. "2026-01").
+	// When provided for stock categories, expansion will be applied only for months >= this value.
+	startMonth?: string | null;
 };
 
 type SavePeriodValueResult = {
@@ -215,7 +218,7 @@ export function useFinancialSpreadsheet(scenarioId: string | null) {
 					throw new Error("入力値が不正です");
 				}
 
-				const entries = isAnnualExpansionColumn
+				let entries = isAnnualExpansionColumn
 					? expandYearlyToMonthly({
 						periodMonths,
 						yearlyValue: value,
@@ -230,6 +233,19 @@ export function useFinancialSpreadsheet(scenarioId: string | null) {
 						value,
 						isExpanded: false,
 					}));
+
+				// ストック項目: ユーザが編集した列の開始月より前の期間にはエントリを作成しない
+				if (options?.category === "asset" || options?.category === "liability") {
+					const start = options?.startMonth ?? null;
+					if (start) {
+						const filtered = entries.filter((e) => e.yearMonth >= start);
+						// Debug: show how many entries will be saved
+						console.debug("savePeriodValue: filtered stock entries", { original: entries.length, filtered: filtered.length, start });
+						// use filtered entries for POST
+						// @ts-expect-error override for posting
+						(entries as any) = filtered;
+					}
+				}
 
 				const response = await fetch("/api/financial-entries", {
 					method: "POST",

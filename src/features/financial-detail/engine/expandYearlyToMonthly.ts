@@ -159,6 +159,13 @@ export const expandYearlyToMonthly = ({
 	rate,
 	eventMonths,
 }: ExpandYearlyToMonthlyInput): ExpandedMonthlyValue[] => {
+	console.debug("expandYearlyToMonthly: periodMonths range", periodMonths[0], "->", periodMonths[periodMonths.length - 1], {
+		yearlyValue,
+		category,
+		autoCalc,
+		rate,
+		eventMonths,
+	});
 	const normalizedYears = normalizeYears(years);
 	const expectedMonths = normalizedYears * 12;
 
