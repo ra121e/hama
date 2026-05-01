@@ -267,12 +267,20 @@ export function aggregateToTimepoint(
     return 0;
   }
 
-  // データ内の起点月を基準とする
-  // financial-detail の入力は現在月から未来へ並ぶため、
-  // 5y / 10y / 20y はこの起点からの相対月数で解釈する。
-  const baseMonth = entries.reduce((min, e) => {
+  // システム現在月を基準にする。
+  // 新規作成小項目で未来の年次・5年単位に値を入力した場合、
+  // 未来のエントリが baseMonth にならないよう、システム現在月を最優先する。
+  const systemCurrentMonth = formatYearMonth(new Date());
+
+  // エントリ内の最小月を算出
+  const earliestEntryMonth = entries.reduce((min, e) => {
     return monthDiff(e.yearMonth, min) < 0 ? e.yearMonth : min;
   }, entries[0].yearMonth);
+
+  // baseMonth = システム現在月とエントリ最小月の小さい方（過去側）
+  const baseMonth = monthDiff(systemCurrentMonth, earliestEntryMonth) < 0
+    ? systemCurrentMonth
+    : earliestEntryMonth;
 
   // now時点の場合は常に直接計算
   if (target === "now") {
@@ -321,15 +329,14 @@ export function aggregateToTimepoint(
   if (type === "balance") {
     // 残高系：
     // - 対象月のデータがあれば使用
-    // - なければ、最新月の値を延伸（将来予測）
+    // - なければ 0 を返す（入力されていない時点のデータは表示しない）
     const entry = entries.find((e) => e.yearMonth === targetMonth);
     if (isFiniteNumber(entry?.value)) {
       return entry.value;
     }
 
-    // 対象月が未来で存在しない場合、最新月の値を使用
-    const latestEntry = entries.find((e) => e.yearMonth === baseMonth);
-    return isFiniteNumber(latestEntry?.value) ? latestEntry.value : 0;
+    // 対象月のデータがない場合は 0（ユーザが入力していない時点は表示しない）
+    return 0;
   } else {
     // フロー系：
     // - 対象時点から連続12ヶ月の合計を返す
