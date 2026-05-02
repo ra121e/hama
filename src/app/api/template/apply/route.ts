@@ -1,5 +1,45 @@
 import { prisma } from "@/lib/prisma";
+import type { FinancialEntry, FinancialItem } from "@/entities/financial-item";
 import type { LifecycleTemplate } from "@/features/plan/lib/lifecycleTemplates";
+import { applyLifecycleTemplate } from "@/features/financial-detail/lib/applyLifecycleTemplate";
+
+const fixedRootItems = [
+	{ category: "income", label: "収入" },
+	{ category: "expense", label: "支出" },
+	{ category: "asset", label: "資産" },
+	{ category: "liability", label: "負債" },
+] as const;
+
+const ensureFixedRoots = async (profileId: string) => {
+	const existingRoots = await prisma.financialItem.findMany({
+		where: {
+			profileId,
+			level: "large",
+			parentId: null,
+		},
+		orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+	});
+
+	for (const [sortOrder, root] of fixedRootItems.entries()) {
+		const existing = existingRoots.find((item) => item.category === root.category);
+		if (existing) {
+			continue;
+		}
+
+		await prisma.financialItem.create({
+			data: {
+				profileId,
+				level: "large",
+				parentId: null,
+				name: root.label,
+				category: root.category,
+				autoCalc: "none",
+				rate: null,
+				sortOrder,
+			},
+		});
+	}
+};
 
 /**
  * POST /api/template/apply
@@ -32,133 +72,27 @@ export async function POST(request: Request) {
 			);
 		}
 
+		await ensureFixedRoots(profileId);
+
 		const result = await prisma.$transaction(async (tx) => {
-			// 確実に financialDetail が存在することを型に反映させる
-			const financialDetail = template.financialDetail;
-			if (!financialDetail || !financialDetail.items || !financialDetail.entries) {
-				throw new Error("Invalid financial detail structure");
-			}
-			// 1. 既存の FinancialItem（シナリオに紐づく）を削除しない
-			// （他のシナリオから参照される可能性があるため）
-			// 2. 既存の FinancialEntry を削除
-			await tx.financialEntry.deleteMany({
+			const existingItems = (await tx.financialItem.findMany({
+				where: { profileId },
+				orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+			})) as FinancialItem[];
+
+			const existingEntries = (await tx.financialEntry.findMany({
 				where: { scenarioId },
+			})) as FinancialEntry[];
+
+			return applyLifecycleTemplate({
+				profileId,
+				scenarioId,
+				template,
+				existingItems,
+				existingEntries,
+				createItem: async (data) => tx.financialItem.create({ data }) as Promise<FinancialItem>,
+				createEntry: async (data) => tx.financialEntry.create({ data }) as Promise<FinancialEntry>,
 			});
-
-			// 3. テンプレートの items から FinancialItem を作成
-			// まず大項目の固定ルートを確認
-			const largeItems = await tx.financialItem.findMany({
-				where: {
-					profileId,
-					level: "large",
-					parentId: null,
-				},
-			});
-
-			const categoryToLargeItemId: Record<string, string> = {};
-			for (const largeItem of largeItems) {
-				categoryToLargeItemId[largeItem.category] = largeItem.id;
-			}
-
-			// itemName -> itemId のマップを作成
-			const itemNameToId: Record<string, string> = {};
-
-			for (const templateItem of financialDetail.items) {
-				if (templateItem.level === "large") {
-					// 大項目はカテゴリでマッピング
-					const largeItemId = categoryToLargeItemId[templateItem.category];
-					itemNameToId[templateItem.name] = largeItemId;
-				} else if (templateItem.level === "medium") {
-					// 中項目を作成
-					const parentLargeId = categoryToLargeItemId[templateItem.category];
-					if (!parentLargeId) {
-						throw new Error(`Large item not found for category: ${templateItem.category}`);
-					}
-
-					const mediumSiblings = await tx.financialItem.findMany({
-						where: {
-							profileId,
-							parentId: parentLargeId,
-							level: "medium",
-						},
-					});
-					const nextSortOrder = mediumSiblings.length;
-
-					const medium = await tx.financialItem.create({
-						data: {
-							profileId,
-							level: "medium",
-							parentId: parentLargeId,
-							name: templateItem.name,
-							category: templateItem.category,
-							autoCalc: templateItem.autoCalc || "none",
-							rate: templateItem.rate || null,
-							sortOrder: nextSortOrder,
-						},
-					});
-
-					itemNameToId[templateItem.name] = medium.id;
-				} else if (templateItem.level === "small") {
-					// 小項目を作成
-					// parentId は templateItem.parentId だが、これは理論的な親
-					// 実装では、パレントに対応する実際のIDを見つける必要がある
-					const parentName = templateItem.parentId || "";
-					const parentId = itemNameToId[parentName];
-					if (!parentId) {
-						throw new Error(`Parent item not found: ${parentName}`);
-					}
-
-					const smallSiblings = await tx.financialItem.findMany({
-						where: {
-							profileId,
-							parentId,
-							level: "small",
-						},
-					});
-					const nextSortOrder = smallSiblings.length;
-
-					const small = await tx.financialItem.create({
-						data: {
-							profileId,
-							level: "small",
-							parentId,
-							name: templateItem.name,
-							category: templateItem.category,
-							autoCalc: templateItem.autoCalc || "none",
-							rate: templateItem.rate || null,
-							sortOrder: nextSortOrder,
-						},
-					});
-
-					itemNameToId[templateItem.name] = small.id;
-				}
-			}
-
-			// 4. テンプレートの entries から FinancialEntry を作成
-			for (const entry of financialDetail.entries) {
-				const itemId = itemNameToId[entry.itemName];
-				if (!itemId) {
-					console.warn(`Item not found: ${entry.itemName}`);
-					continue;
-				}
-
-				await tx.financialEntry.create({
-					data: {
-						scenarioId,
-						itemId,
-						yearMonth: entry.yearMonth,
-						value: entry.value,
-						isExpanded: false,
-						memo: null,
-					},
-				});
-			}
-
-			return {
-				success: true,
-				itemsCreated: Object.keys(itemNameToId).length,
-				entriesCreated: financialDetail.entries.length,
-			};
 		});
 
 		return Response.json(result);

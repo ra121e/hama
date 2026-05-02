@@ -89,30 +89,34 @@ export function DetailTemplateSelector({ onApplyComplete }: DetailTemplateSelect
 			return null;
 		}
 
-		const itemCount = selectedTemplate.financialDetail.items?.length ?? 0;
-		const entryCount = selectedTemplate.financialDetail.entries?.length ?? 0;
-
 		return {
 			financial: [
 				selectedTemplate.financial.fin_assets,
 				selectedTemplate.financial.fin_income,
 				selectedTemplate.financial.fin_expense,
 			],
-			happiness: [
-				selectedTemplate.happiness.hap_time,
-				selectedTemplate.happiness.hap_health,
-				selectedTemplate.happiness.hap_relation,
-				selectedTemplate.happiness.hap_selfreal,
-			],
-			itemCount,
-			entryCount,
+			itemCount: selectedTemplate.financialDetail.items?.length ?? 0,
+			entryCount: selectedTemplate.financialDetail.entries?.length ?? 0,
 		};
 	}, [selectedTemplate]);
+
+	const openSelector = () => {
+		setIsDialogOpen(true);
+	};
 
 	const openConfirm = (template: LifecycleTemplate) => {
 		setSelectedTemplate(template);
 		setApplyError(null);
-		setIsDialogOpen(true);
+	};
+
+	const resetSelection = () => {
+		setSelectedTemplate(null);
+		setApplyError(null);
+	};
+
+	const closeDialog = () => {
+		setIsDialogOpen(false);
+		resetSelection();
 	};
 
 	const handleApply = async () => {
@@ -142,16 +146,12 @@ export function DetailTemplateSelector({ onApplyComplete }: DetailTemplateSelect
 			}
 
 			const result = await response.json();
-
 			toast({
 				title: "テンプレートを適用しました",
-				description: `${result.itemsCreated}個の財務項目と${result.entriesCreated}個のエントリを作成しました。`,
+				description: `${result.itemsCreated}個の財務項目と${result.entriesCreated}個のエントリを追加しました。`,
 			});
 
-			setIsDialogOpen(false);
-			setSelectedTemplate(null);
-
-			// 親コンポーネントに通知
+			closeDialog();
 			onApplyComplete?.();
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : "テンプレート適用に失敗しました";
@@ -169,52 +169,25 @@ export function DetailTemplateSelector({ onApplyComplete }: DetailTemplateSelect
 
 	return (
 		<div className="space-y-3">
-			<div>
-				<h3 className="text-sm font-semibold">テンプレートから入力する</h3>
-				<p className="text-xs text-muted-foreground">ライフステージ別のサンプル財務項目と月次データを一括適用できます。</p>
+			<div className="flex flex-wrap items-center justify-between gap-3">
+				<div>
+					<h3 className="text-sm font-semibold">テンプレートから入力する</h3>
+					<p className="text-xs text-muted-foreground">ライフステージ別の詳細財務テンプレートをポップアップで選択できます。</p>
+				</div>
+				<Button type="button" onClick={openSelector}>
+					テンプレートを開く
+				</Button>
 			</div>
 
 			{loadError ? <p className="text-xs text-destructive">{loadError}</p> : null}
 			{isLoading ? <p className="text-xs text-muted-foreground">テンプレートを読み込み中...</p> : null}
 
-			<div className="grid gap-2 lg:grid-cols-2">
-				{templates.map((template) => (
-					<Card key={template.id} className="border-border/70 bg-background/70">
-						<CardHeader className="pb-3">
-							<div className="flex items-start justify-between gap-3">
-								<div className="space-y-1">
-									<CardTitle className="text-sm">{template.title}</CardTitle>
-									<CardDescription className="text-xs">{template.description}</CardDescription>
-								</div>
-								<Badge className={cn("border", templateTone[template.id])} variant="outline">
-									{stageLabels[template.id]}
-								</Badge>
-							</div>
-						</CardHeader>
-						<CardContent className="space-y-2">
-							<div className="text-xs text-muted-foreground">
-								<p>項目: {template.financialDetail?.items?.length ?? 0}個</p>
-								<p>月次エントリ: {template.financialDetail?.entries?.length ?? 0}件</p>
-							</div>
-							<Button
-								type="button"
-								size="sm"
-								onClick={() => openConfirm(template)}
-								disabled={!template.financialDetail}
-							>
-								このテンプレートを使う
-							</Button>
-						</CardContent>
-					</Card>
-				))}
-			</div>
-
-			<Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-				<DialogContent>
+			<Dialog open={isDialogOpen} onOpenChange={(open) => (open ? setIsDialogOpen(true) : closeDialog())}>
+				<DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-4xl">
 					<DialogHeader>
-						<DialogTitle>テンプレートを適用しますか？</DialogTitle>
+						<DialogTitle>{selectedTemplate ? "テンプレートを適用しますか？" : "テンプレートを選択"}</DialogTitle>
 						<DialogDescription>
-							選択したテンプレートの財務項目と月次データで、現在のプランの詳細財務入力を上書きします。
+							詳細財務入力に必要な項目と月次データだけを、安全に追加します。
 						</DialogDescription>
 					</DialogHeader>
 
@@ -225,12 +198,12 @@ export function DetailTemplateSelector({ onApplyComplete }: DetailTemplateSelect
 									<p className="font-medium">{selectedTemplate.title}</p>
 									<p className="text-xs text-muted-foreground">{selectedTemplate.description}</p>
 								</div>
-								<Badge variant="secondary">{stageLabels[selectedTemplate.id]}</Badge>
+								<Badge variant="secondary">詳細財務</Badge>
 							</div>
 
 							<div className="space-y-3">
 								<div>
-									<p className="text-xs font-semibold text-muted-foreground">財務（基本項目）</p>
+									<p className="text-xs font-semibold text-muted-foreground">基本項目</p>
 									<ul className="mt-1 space-y-1 text-xs">
 										<li>総資産: {formatMoney(selectedSummary.financial[0])}</li>
 										<li>収入: {formatMoney(selectedSummary.financial[1])}</li>
@@ -244,15 +217,6 @@ export function DetailTemplateSelector({ onApplyComplete }: DetailTemplateSelect
 										<li>月次エントリ: {selectedSummary.entryCount}件</li>
 									</ul>
 								</div>
-								<div>
-									<p className="text-xs font-semibold text-muted-foreground">ハッピー4項目</p>
-									<ul className="mt-1 space-y-1 text-xs">
-										<li>時間バランス: {selectedSummary.happiness[0]}</li>
-										<li>健康: {selectedSummary.happiness[1]}</li>
-										<li>人間関係: {selectedSummary.happiness[2]}</li>
-										<li>自己実現: {selectedSummary.happiness[3]}</li>
-									</ul>
-								</div>
 							</div>
 
 							{applyError ? (
@@ -261,19 +225,49 @@ export function DetailTemplateSelector({ onApplyComplete }: DetailTemplateSelect
 								</div>
 							) : null}
 						</div>
-					) : null}
+					) : (
+						<div className="grid gap-2 lg:grid-cols-2">
+							{templates.map((template) => (
+								<Card key={template.id} className="border-border/70 bg-background/70">
+									<CardHeader className="pb-3">
+										<div className="flex items-start justify-between gap-3">
+											<div className="space-y-1">
+												<CardTitle className="text-sm">{template.title}</CardTitle>
+												<CardDescription className="text-xs">{template.description}</CardDescription>
+											</div>
+											<Badge className={cn("border", templateTone[template.id])} variant="outline">
+												{stageLabels[template.id]}
+											</Badge>
+										</div>
+									</CardHeader>
+									<CardContent className="space-y-2">
+										<div className="text-xs text-muted-foreground">
+											<p>項目: {template.financialDetail?.items?.length ?? 0}個</p>
+											<p>月次エントリ: {template.financialDetail?.entries?.length ?? 0}件</p>
+										</div>
+										<Button type="button" size="sm" onClick={() => openConfirm(template)} disabled={!template.financialDetail}>
+											このテンプレートを使う
+										</Button>
+									</CardContent>
+								</Card>
+							))}
+						</div>
+					)}
 
 					<DialogFooter>
+						{selectedTemplate ? (
+							<Button type="button" variant="secondary" onClick={resetSelection}>
+								戻る
+							</Button>
+						) : null}
 						<DialogClose className="inline-flex h-8 items-center justify-center rounded-lg border border-border bg-background px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted">
 							キャンセル
 						</DialogClose>
-						<Button
-							type="button"
-							onClick={handleApply}
-							disabled={!selectedTemplate || isApplying}
-						>
-							{isApplying ? "適用中..." : "適用する"}
-						</Button>
+						{selectedTemplate ? (
+							<Button type="button" onClick={handleApply} disabled={isApplying}>
+								{isApplying ? "適用中..." : "適用する"}
+							</Button>
+						) : null}
 					</DialogFooter>
 					<DialogClose className="absolute right-4 top-4 inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
 						<X className="size-4" />

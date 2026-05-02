@@ -19,6 +19,7 @@ const happinessSchema = z.object({
 
 // 詳細財務入力用スキーマ
 const financialDetailItemSchema = z.object({
+	id: z.string().min(1),
 	level: z.enum(["large", "medium", "small"]),
 	parentId: z.string().nullable(),
 	name: z.string().min(1),
@@ -28,7 +29,7 @@ const financialDetailItemSchema = z.object({
 });
 
 const financialDetailEntrySchema = z.object({
-	itemName: z.string().min(1),
+	itemId: z.string().min(1),
 	yearMonth: z.string(), // "2026-04" format
 	value: z.number(),
 });
@@ -49,6 +50,8 @@ export const lifecycleTemplateSchema = z.object({
 });
 
 export type LifecycleTemplate = z.infer<typeof lifecycleTemplateSchema>;
+export type LifecycleTemplateFinancialDetailItem = z.infer<typeof financialDetailItemSchema>;
+export type LifecycleTemplateFinancialDetailEntry = z.infer<typeof financialDetailEntrySchema>;
 
 const LIFECYCLE_TEMPLATE_PATHS: Record<LifecycleTemplateId, string> = {
 	twenties: "/templates/twenties.json",
