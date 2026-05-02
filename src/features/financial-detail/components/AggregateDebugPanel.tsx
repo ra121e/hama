@@ -39,8 +39,8 @@ export function AggregateDebugPanel({ scenarioId, visible = true }: AggregateDeb
 
     // 各項目について集約結果を計算
     const itemAggregates: Record<string, {
-      balance4Points: Record<string, number>;
-      flow4Points: Record<string, number>;
+      balance4Points: Record<string, number | null>;
+      flow4Points: Record<string, number | null>;
       yearly: Record<string, { balance: number; flow: number }>;
       recent36Count: number;
     }> = {};

@@ -209,7 +209,7 @@ export function useFinancialSpreadsheet(scenarioId?: string | null) {
 		async (
 			itemId: string,
 			periodMonths: string[],
-			value: number,
+			value: number | null,
 			options?: SavePeriodValueOptions
 		): Promise<SavePeriodValueResult> => {
 			if (!resolvedScenarioId) {
@@ -229,8 +229,34 @@ export function useFinancialSpreadsheet(scenarioId?: string | null) {
 					periodMonths.length % 12 === 0;
 				const years = isAnnualExpansionColumn ? periodMonths.length / 12 : 1;
 
-				if (!Number.isFinite(value)) {
+				if (value !== null && !Number.isFinite(value)) {
 					throw new Error("入力値が不正です");
+				}
+
+				if (value === null) {
+					const clearResponse = await fetch("/api/financial-entries", {
+						method: "POST",
+						headers: { "Content-Type": "application/json" },
+						body: JSON.stringify({
+							scenarioId: resolvedScenarioId,
+							itemId,
+							clearMonths: periodMonths,
+						}),
+					});
+
+					if (!clearResponse.ok) {
+						const error = await clearResponse.json();
+						throw new Error(error.message || "Failed to clear financial entries");
+					}
+
+					await new Promise((resolve) => setTimeout(resolve, 100));
+					await loadData();
+
+					setState((current) => ({ ...current, isSaving: false }));
+					return {
+						ok: true,
+						expandedCount: 0,
+					};
 				}
 
 				let entries = isAnnualExpansionColumn

@@ -250,21 +250,20 @@ function sumMonthlyWindow(
  * - 20y：baseMonth + 240ヶ月
  *
  * データが存在しない場合の処理：
- * - フロー系：直近12ヶ月の平均値を返す（将来推定用）
- * - 残高系：最新月の値を使用（延伸）
+ * - データが存在しない場合は null を返す（補完しない）
  *
  * @param entries - FinancialEntry の配列（同一itemIdのもの想定）
  * @param target - 対象時点（"now" | "5y" | "10y" | "20y"）
  * @param type - 集約タイプ（"balance" = 残高系、"flow" = フロー系）
- * @returns 指定時点の集約値。該当データが存在しない場合は推定値を返す
+ * @returns 指定時点の集約値。該当データが存在しない場合は null
  */
 export function aggregateToTimepoint(
   entries: FinancialEntry[],
   target: Timepoint,
   type: AggregationType
-): number {
+): number | null {
   if (entries.length === 0) {
-    return 0;
+    return null;
   }
 
   // システム現在月を基準にする。
@@ -287,26 +286,24 @@ export function aggregateToTimepoint(
     if (type === "balance") {
       // 残高系：最新月の月末残高を使用
       const entry = entries.find((e) => e.yearMonth === baseMonth);
-      return isFiniteNumber(entry?.value) ? entry.value : 0;
+      return isFiniteNumber(entry?.value) ? entry.value : null;
     } else {
       // フロー系：現在月から将来12ヶ月の合計を使用（Forward 12 Months）
       // 基準月は、データ内の最新月とシステム現在月のうち小さい方（将来にあるデータがあっても現在月から開始する）
       const systemMonth = formatYearMonth(new Date());
       const effectiveBase = monthDiff(baseMonth, systemMonth) > 0 ? systemMonth : baseMonth;
 
-      // フォールバックはデータ内の最新月の値（存在しない場合は平均値）
-      const latestEntry = entries.find((e) => e.yearMonth === baseMonth);
-      const fallbackMonthly = isFiniteNumber(latestEntry?.value)
-        ? latestEntry.value
-        : Math.round(entries.reduce((s, e) => s + (isFiniteNumber(e.value) ? e.value : 0), 0) / entries.length);
-
       let sum = 0;
+      let hasAnyData = false;
       for (let i = 0; i < 12; i++) {
         const month = addMonths(effectiveBase, i);
         const entry = entries.find((e) => e.yearMonth === month);
-        sum += isFiniteNumber(entry?.value) ? entry.value : fallbackMonthly;
+        if (isFiniteNumber(entry?.value)) {
+          sum += entry.value;
+          hasAnyData = true;
+        }
       }
-      return sum;
+      return hasAnyData ? sum : null;
     }
   }
 
@@ -323,42 +320,22 @@ export function aggregateToTimepoint(
       targetMonth = addMonths(baseMonth, 240);
       break;
     default:
-      return 0;
+      return null;
   }
 
   if (type === "balance") {
-    // 残高系：
-    // - 対象月のデータがあれば使用
-    // - なければ最新月の値を返す（延伸）
+    // 残高系：対象月のデータがある場合のみ返す
     const entry = entries.find((e) => e.yearMonth === targetMonth);
-    if (isFiniteNumber(entry?.value)) {
-      return entry.value;
-    }
-
-    // 対象月のデータがない場合は最新月の値を返す（延伸）
-    const latestEntry = entries.reduce((latest, current) => {
-      return monthDiff(current.yearMonth, latest.yearMonth) > 0 ? current : latest;
-    });
-    return isFiniteNumber(latestEntry?.value) ? latestEntry.value : 0;
+    return isFiniteNumber(entry?.value) ? entry.value : null;
   } else {
-    // フロー系：
-    // - 対象時点から連続12ヶ月の合計を返す
-    // - その窓にデータがない場合のみ、直近12ヶ月の平均を年額換算して返す
+    // フロー系：対象時点から連続12ヶ月の合計を返す
+    // 窓内にデータが1件もない場合は補完せず null
     const window = sumMonthlyWindow(entries, targetMonth, 12);
-
-    if (window.hasAnyData) {
-      return window.sum;
-    }
-
-    const recent12Months = getMonthlyEntries(entries, 12);
-    if (recent12Months.length === 0) {
-      return 0;
-    }
-
-    const avgMonthly = recent12Months.reduce((sum, e) => sum + e.value, 0) / recent12Months.length;
-    return Math.round(avgMonthly * 12); // 年額に変換
+    return window.hasAnyData ? window.sum : null;
   }
 }
+
+const toNumberOrZero = (value: number | null): number => (value === null ? 0 : value);
 
 export function aggregateFinancialDataByTimepoints(
   entries: FinancialEntry[],
@@ -401,25 +378,25 @@ export function aggregateFinancialDataByTimepoints(
     }
 
     if (item.category === "asset") {
-      data.now.assets += timepoints.now;
-      data["5y"].assets += timepoints["5y"];
-      data["10y"].assets += timepoints["10y"];
-      data["20y"].assets += timepoints["20y"];
+      data.now.assets += toNumberOrZero(timepoints.now);
+      data["5y"].assets += toNumberOrZero(timepoints["5y"]);
+      data["10y"].assets += toNumberOrZero(timepoints["10y"]);
+      data["20y"].assets += toNumberOrZero(timepoints["20y"]);
     } else if (item.category === "liability") {
-      data.now.assets -= timepoints.now;
-      data["5y"].assets -= timepoints["5y"];
-      data["10y"].assets -= timepoints["10y"];
-      data["20y"].assets -= timepoints["20y"];
+      data.now.assets -= toNumberOrZero(timepoints.now);
+      data["5y"].assets -= toNumberOrZero(timepoints["5y"]);
+      data["10y"].assets -= toNumberOrZero(timepoints["10y"]);
+      data["20y"].assets -= toNumberOrZero(timepoints["20y"]);
     } else if (item.category === "income") {
-      data.now.income += timepoints.now;
-      data["5y"].income += timepoints["5y"];
-      data["10y"].income += timepoints["10y"];
-      data["20y"].income += timepoints["20y"];
+      data.now.income += toNumberOrZero(timepoints.now);
+      data["5y"].income += toNumberOrZero(timepoints["5y"]);
+      data["10y"].income += toNumberOrZero(timepoints["10y"]);
+      data["20y"].income += toNumberOrZero(timepoints["20y"]);
     } else if (item.category === "expense") {
-      data.now.expense += timepoints.now;
-      data["5y"].expense += timepoints["5y"];
-      data["10y"].expense += timepoints["10y"];
-      data["20y"].expense += timepoints["20y"];
+      data.now.expense += toNumberOrZero(timepoints.now);
+      data["5y"].expense += toNumberOrZero(timepoints["5y"]);
+      data["10y"].expense += toNumberOrZero(timepoints["10y"]);
+      data["20y"].expense += toNumberOrZero(timepoints["20y"]);
     }
   }
 
@@ -563,7 +540,7 @@ export function toMonthlyMap(entries: FinancialEntry[]): Record<string, number> 
 export function aggregateTo4Timepoints(
   entries: FinancialEntry[],
   type: AggregationType
-): Record<Timepoint, number> {
+): Record<Timepoint, number | null> {
   return {
     now: aggregateToTimepoint(entries, "now", type),
     "5y": aggregateToTimepoint(entries, "5y", type),

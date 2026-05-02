@@ -16,6 +16,7 @@ import { useFinancialItems } from "@/features/financial-detail/hooks/useFinancia
 import { useProfileStore } from "@/store/profileStore";
 
 export type ChartFinancialData = {
+  hasDetailedData: boolean;
   assets: Record<Timepoint, number>;
   income: Record<Timepoint, number>;
   expense: Record<Timepoint, number>;
@@ -70,6 +71,7 @@ export function useFinancialEntriesForChart(scenarioId: string | null): LoadStat
 
       const aggregated = aggregateFinancialDataByTimepoints(entries, items);
       const chartData: ChartFinancialData = {
+        hasDetailedData: aggregated.hasDetailedData,
         assets: {
           now: aggregated.data.now.assets,
           "5y": aggregated.data["5y"].assets,

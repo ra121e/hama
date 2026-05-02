@@ -95,11 +95,7 @@ export function DualAxisChart({ className, showHappinessSeries = true }: DualAxi
 
       // 財務データ：FinancialEntry の集約データがあればそちらを優先、なければ Snapshot → プロファイル
       const financialData = financialEntriesData.data;
-      const hasFinancialEntries =
-        financialData &&
-        (financialData.assets[key] !== 0 ||
-          financialData.income[key] !== 0 ||
-          financialData.expense[key] !== 0);
+      const hasFinancialEntries = Boolean(financialData?.hasDetailedData);
 
       let point: PointData;
       if (hasFinancialEntries && financialData) {

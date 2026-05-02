@@ -78,13 +78,10 @@ describe("financial-aggregator", () => {
       expect(value).toBeLessThan(1500000);
     });
 
-    it("残高系：5年後のデータが存在しない場合は最新月の値を延伸", () => {
+    it("残高系：5年後のデータが存在しない場合は null を返す", () => {
       // テストデータは36ヶ月（3年）しかないため、5年後は存在しない
-      // 新しい実装では、最新月の値を返す（延伸）
       const value = aggregateToTimepoint(mockData.assets, "5y", "balance");
-      // 値が0でなく、最新月と同じ値であることを確認
-      expect(value).toBeGreaterThan(0);
-      expect(value).toBeLessThan(1500000);
+      expect(value).toBeNull();
     });
 
     it("フロー系：now（現在の年）の12ヶ月合計を取得", () => {
@@ -93,12 +90,26 @@ describe("financial-aggregator", () => {
       expect(value).toBe(500000 * 12);
     });
 
-    it("フロー系：5年後のデータが存在しない場合は直近12ヶ月の平均から推定", () => {
+    it("フロー系：5年後のデータが存在しない場合は null を返す", () => {
       // テストデータは36ヶ月（3年）しかないため、5年後は存在しない
-      // 新しい実装では、直近12ヶ月の平均値から年額を計算して返す
       const value = aggregateToTimepoint(mockData.income, "5y", "flow");
-      // 50万円 × 12ヶ月 = 600万円が予想値
-      expect(value).toBe(500000 * 12);
+      expect(value).toBeNull();
+    });
+
+    it("0 が明示的に保存されている場合は 0 を返す", () => {
+      const zeroEntries: FinancialEntry[] = [
+        {
+          id: "zero-balance",
+          scenarioId: "scenario-1",
+          itemId: "item-assets",
+          yearMonth: new Date().toISOString().slice(0, 7),
+          value: 0,
+          isExpanded: false,
+          memo: null,
+        },
+      ];
+
+      expect(aggregateToTimepoint(zeroEntries, "now", "balance")).toBe(0);
     });
   });
 
@@ -167,16 +178,12 @@ describe("financial-aggregator", () => {
       expect(result).toHaveProperty("20y");
     });
 
-    it("now は current year の合計、将来は推定値", () => {
+    it("now は current year の合計、将来データ未入力は null", () => {
       const result = aggregateTo4Timepoints(mockData.income, "flow");
       expect(result.now).toBeGreaterThan(0);
-      // 新しい実装では、将来も直近12ヶ月の平均から推定値を返す
-      expect(result["5y"]).toBeGreaterThan(0);
-      expect(result["10y"]).toBeGreaterThan(0);
-      expect(result["20y"]).toBeGreaterThan(0);
-      // 全て同じ値になるはず（直近12ヶ月の平均から計算）
-      expect(result["5y"]).toBe(result["10y"]);
-      expect(result["10y"]).toBe(result["20y"]);
+      expect(result["5y"]).toBeNull();
+      expect(result["10y"]).toBeNull();
+      expect(result["20y"]).toBeNull();
     });
 
     it("将来データがある場合は 5y / 10y / 20y で別々の12ヶ月窓を集約する", () => {
@@ -238,9 +245,10 @@ describe("financial-aggregator", () => {
       expect(aggregated.data.now.assets).toBe(70000);
       expect(aggregated.data.now.income).toBe(50000 * 12);
       expect(aggregated.data.now.expense).toBe(20000 * 12);
-      expect(aggregated.data["5y"].assets).toBe(70000);
-      expect(aggregated.data["10y"].income).toBe(50000 * 12);
-      expect(aggregated.data["20y"].expense).toBe(20000 * 12);
+      // 将来時点の入力欠損は null だが、集約計算では NaN回避のため 0 扱い
+      expect(aggregated.data["5y"].assets).toBe(0);
+      expect(aggregated.data["10y"].income).toBe(0);
+      expect(aggregated.data["20y"].expense).toBe(0);
     });
   });
 
@@ -260,10 +268,10 @@ describe("financial-aggregator", () => {
   });
 
   describe("エッジケース", () => {
-    it("空の配列を指定するとすべて0を返す", () => {
+    it("空の配列を指定すると aggregateToTimepoint は null を返す", () => {
       const empty: FinancialEntry[] = [];
-      expect(aggregateToTimepoint(empty, "now", "balance")).toBe(0);
-      expect(aggregateToTimepoint(empty, "now", "flow")).toBe(0);
+      expect(aggregateToTimepoint(empty, "now", "balance")).toBeNull();
+      expect(aggregateToTimepoint(empty, "now", "flow")).toBeNull();
       expect(getMonthlyEntries(empty, 12).length).toBe(0);
       expect(Object.keys(aggregateToYearly(empty)).length).toBe(0);
     });

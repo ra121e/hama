@@ -35,6 +35,27 @@ type RowData = {
 export function FinancialSpreadsheet({ scenarioId, onYearlyExpanded, onSaveError }: Props) {
 	const { rows, columns, isLoading, isSaving, error, savePeriodValue } = useFinancialSpreadsheet(scenarioId);
 
+	const parseCellInputValue = useCallback((rawValue: unknown): number | null => {
+		if (rawValue === null || rawValue === undefined) {
+			return null;
+		}
+
+		if (typeof rawValue === "string") {
+			const trimmed = rawValue.trim();
+			if (trimmed === "") {
+				return null;
+			}
+			const parsed = Number(trimmed);
+			return Number.isFinite(parsed) ? parsed : null;
+		}
+
+		if (typeof rawValue === "number") {
+			return Number.isFinite(rawValue) ? rawValue : null;
+		}
+
+		return null;
+	}, []);
+
 	const gridApiRef = useRef<GridApi | null>(null);
 	const gridContainerRef = useRef<HTMLDivElement>(null);
 	const scrollPositionRef = useRef<{ horizontal: number; vertical: number }>({ horizontal: 0, vertical: 0 });
@@ -102,6 +123,11 @@ export function FinancialSpreadsheet({ scenarioId, onYearlyExpanded, onSaveError
 				};
 
 				columns.forEach((col) => {
+					if (item.level === "small") {
+						row[col.id] = calculateSpreadsheetColumnValue(item.entries, col, isStockCategory);
+						return;
+					}
+
 					if (isStockCategory) {
 						// ストック項目の場合
 						if (col.type === "fiveYear") {
@@ -196,7 +222,7 @@ export function FinancialSpreadsheet({ scenarioId, onYearlyExpanded, onSaveError
 					editable: false,
 					valueFormatter: (params) => {
 						const value = params.value;
-						if (value === null || value === undefined || value === 0) return "";
+						if (value === null || value === undefined) return "";
 						return formatCurrency(value);
 					},
 					cellStyle: (params) => {
@@ -235,10 +261,17 @@ export function FinancialSpreadsheet({ scenarioId, onYearlyExpanded, onSaveError
 				},
 				valueFormatter: (params) => {
 					const value = params.value;
-					if (value === null || value === undefined || value === 0) return "";
+					if (value === null || value === undefined) return "";
 					return formatCurrency(value);
 				},
 				cellStyle: (params): CellStyle | undefined => {
+					if (params.value === null || params.value === undefined) {
+						return {
+							backgroundColor: "rgb(244, 244, 245)",
+							color: "rgb(113, 113, 122)",
+						};
+					}
+
 					const level = params.data?.level || "";
 					const category = params.data?.category || "";
 					const isStockCategory = category === "asset" || category === "liability";
@@ -303,7 +336,7 @@ export function FinancialSpreadsheet({ scenarioId, onYearlyExpanded, onSaveError
 				},
 				onCellValueChanged: async (event) => {
 					const row = event.data as RowData;
-					const newValue = Number(event.newValue) || 0;
+					const newValue = parseCellInputValue(event.newValue);
 
 					if (!row.id) return;
 
@@ -359,7 +392,7 @@ export function FinancialSpreadsheet({ scenarioId, onYearlyExpanded, onSaveError
 		});
 
 		return cols;
-	}, [columns, savePeriodValue, onSaveError, onYearlyExpanded]);
+	}, [columns, savePeriodValue, onSaveError, onYearlyExpanded, parseCellInputValue]);
 
 	if (isLoading && preparedRowData.length === 0) {
 		return (

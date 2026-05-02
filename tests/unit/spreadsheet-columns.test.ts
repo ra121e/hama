@@ -68,4 +68,30 @@ describe("spreadsheet columns", () => {
 			}),
 		).toBe(120);
 	});
+
+	it("returns null when the target period has no entry, but keeps explicit zero", () => {
+		const emptyEntries = new Map<string, FinancialEntry>();
+		expect(
+			calculateSpreadsheetColumnValue(emptyEntries, {
+				id: "month_2026-04",
+				periodMonths: ["2026-04"],
+				type: "month",
+			}),
+		).toBeNull();
+
+		const zeroEntries = new Map<string, FinancialEntry>([
+			[
+				"2026-04",
+				{ id: "z1", scenarioId: "scenario", itemId: "item", yearMonth: "2026-04", value: 0, isExpanded: false, memo: null },
+			],
+		]);
+
+		expect(
+			calculateSpreadsheetColumnValue(zeroEntries, {
+				id: "month_2026-04",
+				periodMonths: ["2026-04"],
+				type: "month",
+			}),
+		).toBe(0);
+	});
 });

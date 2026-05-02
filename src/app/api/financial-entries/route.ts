@@ -120,15 +120,32 @@ export async function POST(request: Request) {
 			memo?: string;
 			isExpanded?: boolean;
 			entries?: FinancialEntryPayload[];
+			clearMonths?: string[];
 		};
 
-		const { scenarioId, itemId, yearMonth, value, memo, isExpanded, entries } = body;
+		const { scenarioId, itemId, yearMonth, value, memo, isExpanded, entries, clearMonths } = body;
 
 		if (!scenarioId || !itemId) {
 			return Response.json(
 				{ message: "scenarioId and itemId are required" },
 				{ status: 400 }
 			);
+		}
+
+		if (clearMonths && clearMonths.length > 0) {
+			const deleted = await prisma.financialEntry.deleteMany({
+				where: {
+					scenarioId,
+					itemId,
+					yearMonth: { in: clearMonths },
+				},
+			});
+
+			return Response.json({
+				scenarioId,
+				itemId,
+				clearedCount: deleted.count,
+			});
 		}
 
 		if (entries && entries.length > 0) {
