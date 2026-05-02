@@ -8,6 +8,7 @@ import { getNextSortOrder } from "./financial-items";
 
 type CreateFinancialItemInput = {
 	profileId: string;
+	scenarioId: string;
 	level: FinancialItem["level"];
 	parentId: string | null;
 	name: string;
@@ -143,6 +144,7 @@ export async function applyLifecycleTemplate({
 
 		const createdItem = await createItem({
 			profileId,
+			scenarioId,
 			level: templateItem.level,
 			parentId,
 			name: templateItem.name,

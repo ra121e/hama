@@ -64,6 +64,8 @@ const DEFAULT_SETTINGS = {
   displayUnit: "man",
 };
 
+let profileBootstrapPromise: Promise<void> | null = null;
+
 const buildSnapshotCreateInput = (
   scenarioId: string,
   financial: FinancialData,
@@ -121,6 +123,83 @@ const buildSnapshotCreateInput = (
   ];
 
   return snapshots;
+};
+
+const createBaseScenarioIfMissing = async (tx: Prisma.TransactionClient, profileId: string) => {
+  const existingBaseScenario = await tx.scenario.findUnique({
+    where: { id: DEFAULT_SCENARIO_ID },
+    select: { id: true },
+  });
+
+  if (existingBaseScenario) {
+    return;
+  }
+
+  await tx.scenario.create({
+    data: {
+      id: DEFAULT_SCENARIO_ID,
+      profileId,
+      name: DEFAULT_SCENARIO_NAME,
+      type: "base",
+      isDefault: true,
+      snapshots: {
+        create: buildSnapshotCreateInput(
+          DEFAULT_SCENARIO_ID,
+          DEFAULT_FINANCIAL,
+          DEFAULT_HAPPINESS,
+          {},
+          "now",
+        ),
+      },
+    },
+  });
+};
+
+const ensureDefaultProfileBundle = async () => {
+  if (!profileBootstrapPromise) {
+    profileBootstrapPromise = (async () => {
+      const profile = await prisma.profile.findFirst({
+        orderBy: { createdAt: "asc" },
+        include: {
+          settings: true,
+          scenarios: {
+            orderBy: { createdAt: "asc" },
+            include: {
+              snapshots: true,
+            },
+          },
+        },
+      });
+
+      if (!profile) {
+        await prisma.$transaction(async (tx) => {
+          const createdProfile = await tx.profile.create({
+            data: {
+              name: DEFAULT_PROFILE_NAME,
+              currency: "JPY",
+              settings: {
+                create: DEFAULT_SETTINGS,
+              },
+            },
+          });
+
+          await createBaseScenarioIfMissing(tx, createdProfile.id);
+        });
+
+        return;
+      }
+
+      if (profile.scenarios.length === 0) {
+        await prisma.$transaction(async (tx) => {
+          await createBaseScenarioIfMissing(tx, profile.id);
+        });
+      }
+    })().finally(() => {
+      profileBootstrapPromise = null;
+    });
+  }
+
+  await profileBootstrapPromise;
 };
 
 const groupSnapshotsByScenario = (
@@ -236,54 +315,10 @@ const fetchProfileBundle = async (preferredScenarioId?: string) => {
     },
   });
 
-  if (!profile) {
-    profile = await prisma.profile.create({
-      data: {
-        name: DEFAULT_PROFILE_NAME,
-        currency: "JPY",
-        settings: {
-          create: DEFAULT_SETTINGS,
-        },
-      },
-      include: {
-        settings: true,
-        scenarios: {
-          orderBy: { createdAt: "asc" },
-          include: {
-            snapshots: true,
-          },
-        },
-      },
-    });
-
-    await prisma.scenario.upsert({
-      where: { id: DEFAULT_SCENARIO_ID },
-      update: {
-        profileId: profile.id,
-        name: DEFAULT_SCENARIO_NAME,
-        type: "base",
-        isDefault: true,
-      },
-      create: {
-        id: DEFAULT_SCENARIO_ID,
-        profileId: profile.id,
-        name: DEFAULT_SCENARIO_NAME,
-        type: "base",
-        isDefault: true,
-        snapshots: {
-          create: buildSnapshotCreateInput(
-            DEFAULT_SCENARIO_ID,
-            DEFAULT_FINANCIAL,
-            DEFAULT_HAPPINESS,
-            {},
-            "now",
-          ),
-        },
-      },
-    });
-
-    profile = await prisma.profile.findUniqueOrThrow({
-      where: { id: profile.id },
+  if (!profile || profile.scenarios.length === 0) {
+    await ensureDefaultProfileBundle();
+    profile = await prisma.profile.findFirstOrThrow({
+      orderBy: { createdAt: "asc" },
       include: {
         settings: true,
         scenarios: {
@@ -404,15 +439,18 @@ const saveProfile = async (request: Request) => {
             ...(scenarioType ? { type: scenarioType } : {}),
           },
         })
-      : await tx.scenario.create({
-          data: {
-            id: scenarioId,
-            profileId: profile.id,
-            name: scenarioName ?? DEFAULT_SCENARIO_NAME,
-            type: scenarioType ?? (scenarioId === DEFAULT_SCENARIO_ID ? "base" : "custom"),
-            isDefault: scenarioId === DEFAULT_SCENARIO_ID,
-          },
-        });
+      : scenarioId === DEFAULT_SCENARIO_ID
+        ? (await createBaseScenarioIfMissing(tx, profile.id),
+          await tx.scenario.findUniqueOrThrow({ where: { id: DEFAULT_SCENARIO_ID } }))
+        : await tx.scenario.create({
+            data: {
+              id: scenarioId,
+              profileId: profile.id,
+              name: scenarioName ?? DEFAULT_SCENARIO_NAME,
+              type: scenarioType ?? "custom",
+              isDefault: false,
+            },
+          });
 
     await tx.snapshot.deleteMany({
       where: {

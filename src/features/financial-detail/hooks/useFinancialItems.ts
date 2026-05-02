@@ -3,11 +3,13 @@
 import { useEffect, useState } from "react";
 import type { FinancialItem } from "@/entities/financial-item";
 import type { FinancialItemsResponse } from "@/features/financial-detail/schema";
+import { useProfileStore } from "@/store/profileStore";
 
 type MoveDirection = "up" | "down";
 
 type LoadState = {
 	profileId: string | null;
+	scenarioId: string | null;
 	items: FinancialItem[];
 	isLoading: boolean;
 	error: string | null;
@@ -23,14 +25,28 @@ const parseResponseError = async (response: Response) => {
 };
 
 export function useFinancialItems() {
+	const activeScenarioId = useProfileStore((state) => state.activeScenarioId);
+
 	const [state, setState] = useState<LoadState>({
 		profileId: null,
+		scenarioId: null,
 		items: [],
 		isLoading: true,
 		error: null,
 	});
 
-	const loadItems = async () => {
+	const loadItems = async (scenarioId?: string | null) => {
+		const targetScenarioId = scenarioId ?? activeScenarioId;
+
+		if (!targetScenarioId) {
+			setState((current) => ({
+				...current,
+				isLoading: false,
+				error: "シナリオが選択されていません",
+			}));
+			return;
+		}
+
 		setState((current) => ({ ...current, isLoading: true, error: null }));
 
 		try {
@@ -41,9 +57,11 @@ export function useFinancialItems() {
 
 			const profilePayload = (await profileResponse.json()) as { profile: { id: string } };
 			const profileId = profilePayload.profile.id;
-			const itemsResponse = await fetch(`/api/financial-items?profileId=${encodeURIComponent(profileId)}`, {
-				cache: "no-store",
-			});
+
+			const itemsResponse = await fetch(
+				`/api/financial-items?profileId=${encodeURIComponent(profileId)}&scenarioId=${encodeURIComponent(targetScenarioId)}`,
+				{ cache: "no-store" }
+			);
 
 			if (!itemsResponse.ok) {
 				throw new Error(await parseResponseError(itemsResponse));
@@ -52,6 +70,7 @@ export function useFinancialItems() {
 			const payload = (await itemsResponse.json()) as FinancialItemsResponse;
 			setState({
 				profileId: payload.profileId,
+				scenarioId: payload.scenarioId,
 				items: payload.items,
 				isLoading: false,
 				error: null,
@@ -66,62 +85,76 @@ export function useFinancialItems() {
 	};
 
 	const createFinancialItem = async (parentId: string, name: string) => {
-		if (!state.profileId) {
-			throw new Error("プロフィールが読み込まれていません");
+		if (!state.profileId || !state.scenarioId) {
+			throw new Error("プロフィールまたはシナリオが読み込まれていません");
 		}
 
 		const response = await fetch("/api/financial-items", {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ profileId: state.profileId, parentId, name }),
+			body: JSON.stringify({
+				profileId: state.profileId,
+				scenarioId: state.scenarioId,
+				parentId,
+				name,
+			}),
 		});
 
 		if (!response.ok) {
 			throw new Error(await parseResponseError(response));
 		}
 
-		await loadItems();
+		await loadItems(state.scenarioId);
 	};
 
 	const renameFinancialItem = async (itemId: string, name: string) => {
-		if (!state.profileId) {
-			throw new Error("プロフィールが読み込まれていません");
+		if (!state.profileId || !state.scenarioId) {
+			throw new Error("プロフィールまたはシナリオが読み込まれていません");
 		}
 
 		const response = await fetch("/api/financial-items", {
 			method: "PATCH",
 			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ profileId: state.profileId, itemId, name }),
+			body: JSON.stringify({
+				profileId: state.profileId,
+				scenarioId: state.scenarioId,
+				itemId,
+				name,
+			}),
 		});
 
 		if (!response.ok) {
 			throw new Error(await parseResponseError(response));
 		}
 
-		await loadItems();
+		await loadItems(state.scenarioId);
 	};
 
 	const deleteFinancialItem = async (itemId: string) => {
-		if (!state.profileId) {
-			throw new Error("プロフィールが読み込まれていません");
+		if (!state.profileId || !state.scenarioId) {
+			throw new Error("プロフィールまたはシナリオが読み込まれていません");
 		}
 
 		const response = await fetch("/api/financial-items", {
 			method: "DELETE",
 			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ profileId: state.profileId, itemId }),
+			body: JSON.stringify({
+				profileId: state.profileId,
+				scenarioId: state.scenarioId,
+				itemId,
+			}),
 		});
 
 		if (!response.ok) {
 			throw new Error(await parseResponseError(response));
 		}
 
-		await loadItems();
+		await loadItems(state.scenarioId);
 	};
 
 	const moveFinancialItem = async (itemId: string, direction: MoveDirection) => {
-		if (!state.profileId) {
-			throw new Error("プロフィールが読み込まれていません");
+		if (!state.profileId || !state.scenarioId) {
+			throw new Error("プロフィールまたはシナリオが読み込まれていません");
 		}
 
 		const target = state.items.find((item) => item.id === itemId);
@@ -147,6 +180,7 @@ export function useFinancialItems() {
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify({
 				profileId: state.profileId,
+				scenarioId: state.scenarioId,
 				parentId: target.parentId,
 				orderedIds: nextOrderedIds.map((item) => item.id),
 			}),
@@ -156,19 +190,21 @@ export function useFinancialItems() {
 			throw new Error(await parseResponseError(response));
 		}
 
-		await loadItems();
+		await loadItems(state.scenarioId);
 	};
 
 	useEffect(() => {
-		void loadItems();
-	}, []);
+		void loadItems(activeScenarioId);
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [activeScenarioId]);
 
 	return {
 		profileId: state.profileId,
+		scenarioId: state.scenarioId,
 		items: state.items,
 		isLoading: state.isLoading,
 		error: state.error,
-		refresh: loadItems,
+		refresh: () => loadItems(state.scenarioId),
 		createFinancialItem,
 		renameFinancialItem,
 		deleteFinancialItem,

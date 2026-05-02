@@ -16,6 +16,7 @@ import {
 const toFinancialItemPayload = (item: {
 	id: string;
 	profileId: string;
+	scenarioId: string;
 	level: string;
 	parentId: string | null;
 	name: string;
@@ -26,6 +27,7 @@ const toFinancialItemPayload = (item: {
 }): FinancialItem => ({
 	id: item.id,
 	profileId: item.profileId,
+	scenarioId: item.scenarioId,
 	level: item.level as "large" | "medium" | "small",
 	parentId: item.parentId,
 	name: item.name,
@@ -35,15 +37,24 @@ const toFinancialItemPayload = (item: {
 	sortOrder: item.sortOrder,
 });
 
-const ensureLargeRoots = async (profileId: string) => {
-	await prisma.$transaction(async (tx) => {
-		// 同一プロファイルへの同時GETでルート項目が二重生成されないようにロックする
-		await tx.$executeRaw`SELECT 1 FROM "Profile" WHERE id = ${profileId} FOR UPDATE`;
+const ensureLargeRoots = async (scenarioId: string) => {
+	const scenario = await prisma.scenario.findUnique({
+		where: { id: scenarioId },
+		select: { profileId: true }
+	});
 
-		// トランザクション内で最新のルート項目を読み込む
+	if (!scenario) {
+		throw new Error("Scenario not found");
+	}
+
+	await prisma.$transaction(async (tx) => {
+		// Lock the scenario to prevent concurrent modifications
+		await tx.$executeRaw`SELECT 1 FROM "Scenario" WHERE id = ${scenarioId} FOR UPDATE`;
+
+		// Get existing large roots for this scenario
 		const roots = await tx.financialItem.findMany({
 			where: {
-				profileId,
+				scenarioId,
 				level: "large",
 				parentId: null,
 			},
@@ -59,7 +70,7 @@ const ensureLargeRoots = async (profileId: string) => {
 				// Delete duplicate items and their descendants
 				for (const item of deleteItems) {
 					const allDescendants = roots
-						.filter((r) => r.profileId === profileId)
+						.filter((r) => r.scenarioId === scenarioId)
 						.flatMap((r) => {
 							const queue = [r.id];
 							const result: string[] = [];
@@ -110,7 +121,8 @@ const ensureLargeRoots = async (profileId: string) => {
 				// Create new item if none exists
 				await tx.financialItem.create({
 					data: {
-						profileId,
+						profileId: scenario.profileId,
+						scenarioId,
 						level: "large",
 						parentId: null,
 						name: root.label,
@@ -125,11 +137,11 @@ const ensureLargeRoots = async (profileId: string) => {
 	});
 };
 
-const fetchItems = async (profileId: string) => {
-	await ensureLargeRoots(profileId);
+const fetchItems = async (scenarioId: string) => {
+	await ensureLargeRoots(scenarioId);
 
 	const items = await prisma.financialItem.findMany({
-		where: { profileId },
+		where: { scenarioId },
 		orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
 	});
 
@@ -142,14 +154,15 @@ export async function GET(request: Request) {
 	try {
 		const url = new URL(request.url);
 		const profileId = url.searchParams.get("profileId");
+		const scenarioId = url.searchParams.get("scenarioId");
 
-		if (!profileId) {
-			return Response.json({ message: "profileId is required" }, { status: 400 });
+		if (!scenarioId) {
+			return Response.json({ message: "scenarioId is required" }, { status: 400 });
 		}
 
-		const items = await fetchItems(profileId);
+		const items = await fetchItems(scenarioId);
 
-		return Response.json({ profileId, items });
+		return Response.json({ profileId, scenarioId, items });
 	} catch (error) {
 		return Response.json({ message: "Failed to load financial items", error: String(error) }, { status: 500 });
 	}
@@ -160,7 +173,7 @@ export async function POST(request: Request) {
 		const body = createFinancialItemSchema.parse(await request.json());
 		const parent = await prisma.financialItem.findUnique({ where: { id: body.parentId } });
 
-		if (!parent || parent.profileId !== body.profileId) {
+		if (!parent || parent.scenarioId !== body.scenarioId) {
 			return Response.json({ message: "Parent item not found" }, { status: 404 });
 		}
 
@@ -169,13 +182,14 @@ export async function POST(request: Request) {
 		}
 
 		const siblingItems = await prisma.financialItem.findMany({
-			where: { profileId: body.profileId, parentId: body.parentId },
+			where: { scenarioId: body.scenarioId, parentId: body.parentId },
 		});
 		const nextSortOrder = getNextSortOrder(siblingItems as FinancialItem[], body.parentId);
 
 		const created = await prisma.financialItem.create({
 			data: {
 				profileId: body.profileId,
+				scenarioId: body.scenarioId,
 				level: parent.level === "large" ? "medium" : "small",
 				parentId: body.parentId,
 				name: body.name.trim(),
@@ -199,7 +213,7 @@ export async function PATCH(request: Request) {
 		if (Array.isArray(payload?.orderedIds)) {
 			const body = reorderFinancialItemsSchema.parse(payload);
 			const siblings = await prisma.financialItem.findMany({
-				where: { profileId: body.profileId, parentId: body.parentId },
+				where: { scenarioId: body.scenarioId, parentId: body.parentId },
 			});
 			const siblingIds = new Set(siblings.map((item) => item.id));
 			if (siblings.length !== body.orderedIds.length || body.orderedIds.some((id) => !siblingIds.has(id))) {
@@ -221,7 +235,7 @@ export async function PATCH(request: Request) {
 		const body = renameFinancialItemSchema.parse(payload);
 		const target = await prisma.financialItem.findUnique({ where: { id: body.itemId } });
 
-		if (!target || target.profileId !== body.profileId) {
+		if (!target || target.scenarioId !== body.scenarioId) {
 			return Response.json({ message: "Financial item not found" }, { status: 404 });
 		}
 
@@ -245,7 +259,7 @@ export async function DELETE(request: Request) {
 		const body = deleteFinancialItemSchema.parse(await request.json());
 		const target = await prisma.financialItem.findUnique({ where: { id: body.itemId } });
 
-		if (!target || target.profileId !== body.profileId) {
+		if (!target || target.scenarioId !== body.scenarioId) {
 			return Response.json({ message: "Financial item not found" }, { status: 404 });
 		}
 
@@ -253,7 +267,7 @@ export async function DELETE(request: Request) {
 			return Response.json({ message: "Large items cannot be deleted" }, { status: 400 });
 		}
 
-		const allItems = await prisma.financialItem.findMany({ where: { profileId: body.profileId } });
+		const allItems = await prisma.financialItem.findMany({ where: { scenarioId: body.scenarioId } });
 		const descendantIds = getDescendantIds(allItems as FinancialItem[], target.id);
 
 		await prisma.$transaction(async (tx) => {

@@ -9,25 +9,31 @@ export const financialItemNameSchema = z
 
 export const financialItemProfileIdSchema = z.string().min(1, "profileId は必須です");
 
+export const financialItemScenarioIdSchema = z.string().min(1, "scenarioId は必須です");
+
 export const createFinancialItemSchema = z.object({
 	profileId: financialItemProfileIdSchema,
+	scenarioId: financialItemScenarioIdSchema,
 	parentId: z.string().min(1, "parentId は必須です"),
 	name: financialItemNameSchema,
 });
 
 export const renameFinancialItemSchema = z.object({
 	profileId: financialItemProfileIdSchema,
+	scenarioId: financialItemScenarioIdSchema,
 	itemId: z.string().min(1, "itemId は必須です"),
 	name: financialItemNameSchema,
 });
 
 export const deleteFinancialItemSchema = z.object({
 	profileId: financialItemProfileIdSchema,
+	scenarioId: financialItemScenarioIdSchema,
 	itemId: z.string().min(1, "itemId は必須です"),
 });
 
 export const reorderFinancialItemsSchema = z.object({
 	profileId: financialItemProfileIdSchema,
+	scenarioId: financialItemScenarioIdSchema,
 	parentId: z.string().nullable(),
 	orderedIds: z.array(z.string().min(1)).min(1, "orderedIds は少なくとも1件必要です"),
 });
@@ -35,6 +41,7 @@ export const reorderFinancialItemsSchema = z.object({
 export const financialItemPayloadSchema = z.object({
 	id: z.string().min(1),
 	profileId: financialItemProfileIdSchema,
+	scenarioId: financialItemScenarioIdSchema,
 	level: financialItemLevelSchema,
 	parentId: z.string().nullable(),
 	name: financialItemNameSchema,
@@ -46,6 +53,7 @@ export const financialItemPayloadSchema = z.object({
 
 export const financialItemsResponseSchema = z.object({
 	profileId: financialItemProfileIdSchema,
+	scenarioId: financialItemScenarioIdSchema,
 	items: z.array(financialItemPayloadSchema),
 });
 

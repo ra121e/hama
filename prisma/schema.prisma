@@ -23,7 +23,6 @@ model Profile {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   scenarios Scenario[]
-  financialItems FinancialItem[]
   settings  Settings?
 }
 
@@ -37,6 +36,7 @@ model Scenario {
   profile   Profile    @relation(fields: [profileId], references: [id], onDelete: Cascade)
   profileId String
   snapshots Snapshot[]
+  financialItems FinancialItem[]
   financialEntries FinancialEntry[]
 }
 
@@ -56,7 +56,8 @@ model Snapshot {
 model FinancialItem {
   id        String    @id @default(uuid())
   profileId String
-  profile   Profile   @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  scenarioId String
+  scenario   Scenario  @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
   level     String    // large | medium | small
   parentId  String?   // 親項目ID（大項目はnull）
   parent    FinancialItem? @relation("FinancialItemHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
@@ -67,6 +68,8 @@ model FinancialItem {
   rate      Float?    // 年利率・年減価率（autoCalcがnone以外の場合に使用）
   sortOrder Int       @default(0)
   entries   FinancialEntry[]
+
+  @@unique([scenarioId, id])
 }
 
 // 財務エントリ（常に月次単位で保存）

@@ -277,6 +277,7 @@ export function FinancialSpreadsheet({ scenarioId, onYearlyExpanded, onSaveError
 						annualTooltip = getAnnualTooltip(params.value as number | null | undefined, col.periodMonths);
 					} else if (col.type === "fiveYear") {
 						try {
+							// eslint-disable-next-line @typescript-eslint/no-explicit-any
 							const entriesMap = params.data?.entries as Map<string, any> | undefined;
 							let total = 0;
 							if (entriesMap && typeof entriesMap.get === "function") {

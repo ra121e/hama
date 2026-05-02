@@ -12,7 +12,11 @@ import {
 } from "@/components/ui/dialog";
 import { FinancialItemManager } from "@/features/financial-detail/components/FinancialItemManager";
 
-export function FinancialItemManagerDialog() {
+interface FinancialItemManagerDialogProps {
+	onApplyComplete?: () => void | Promise<void>;
+}
+
+export function FinancialItemManagerDialog({ onApplyComplete }: FinancialItemManagerDialogProps) {
 	return (
 		<Dialog>
 			<DialogTrigger
@@ -29,7 +33,7 @@ export function FinancialItemManagerDialog() {
 						<DialogTitle>財務項目管理</DialogTitle>
 						<DialogDescription>中項目と小項目の追加・編集・削除を行います。</DialogDescription>
 					</DialogHeader>
-					<FinancialItemManager />
+					<FinancialItemManager onApplyComplete={onApplyComplete} />
 				</div>
 			</DialogContent>
 		</Dialog>

@@ -53,8 +53,12 @@ const ItemActionButton = ({
 	</Button>
 );
 
-export function FinancialItemManager() {
-	const { items, isLoading, error, profileId, createFinancialItem, renameFinancialItem, deleteFinancialItem, moveFinancialItem } =
+interface FinancialItemManagerProps {
+	onApplyComplete?: () => void | Promise<void>;
+}
+
+export function FinancialItemManager({ onApplyComplete }: FinancialItemManagerProps) {
+	const { items, isLoading, error, profileId, scenarioId, createFinancialItem, renameFinancialItem, deleteFinancialItem, moveFinancialItem } =
 		useFinancialItems();
 	const tree = useMemo(() => buildFinancialItemTree(items), [items]);
 	const [openRootIds, setOpenRootIds] = useState<string[]>([]);
@@ -63,6 +67,7 @@ export function FinancialItemManager() {
 	const [draftName, setDraftName] = useState("");
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [actionError, setActionError] = useState<string | null>(null);
+	const [isApplying, setIsApplying] = useState(false);
 
 	useEffect(() => {
 		if (openRootIds.length === 0 && tree.length > 0) {
@@ -96,6 +101,17 @@ export function FinancialItemManager() {
 
 		setDialogState(null);
 		setActionError(null);
+	};
+
+	const handleApply = async () => {
+		setIsApplying(true);
+		try {
+			await onApplyComplete?.();
+		} catch (error) {
+			setActionError(error instanceof Error ? error.message : "適用に失敗しました");
+		} finally {
+			setIsApplying(false);
+		}
 	};
 
 	const handleSubmitDialog = async () => {
@@ -210,6 +226,9 @@ export function FinancialItemManager() {
 					{error ? <p className="text-sm text-destructive">{error}</p> : null}
 					{profileId ? (
 						<p className="text-xs text-muted-foreground">対象プロフィールID: {profileId}</p>
+					) : null}
+					{scenarioId ? (
+						<p className="text-xs text-muted-foreground">対象シナリオID: {scenarioId}</p>
 					) : null}
 				</CardContent>
 			</Card>
@@ -358,6 +377,17 @@ export function FinancialItemManager() {
 					</DialogFooter>
 				</DialogContent>
 			</Dialog>
+
+			<div className="flex gap-2">
+				<Button
+					type="button"
+					onClick={() => void handleApply()}
+					disabled={isApplying || isLoading}
+					className="ml-auto"
+				>
+					{isApplying ? "適用中..." : "適用"}
+				</Button>
+			</div>
 		</div>
 	);
 }

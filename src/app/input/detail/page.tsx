@@ -27,6 +27,16 @@ export default function DetailInputPage() {
     });
   };
 
+  const handleItemManagerApplyComplete = async () => {
+    // 財務項目管理の適用完了時、プロファイルを再読込してスプレッドシートを更新
+    await loadProfileFromDb();
+    // スプレッドシートを強制的に再マウントしてデータを再読み込みさせる
+    await new Promise<void>((resolve) => {
+      refreshCompletionResolverRef.current = resolve;
+      setRefreshVersion((current) => current + 1);
+    });
+  };
+
   useEffect(() => {
     if (refreshVersion === 0) {
       return;
@@ -65,7 +75,7 @@ export default function DetailInputPage() {
         </div>
 
         <div className="flex items-center gap-3">
-          <FinancialItemManagerDialog />
+          <FinancialItemManagerDialog onApplyComplete={handleItemManagerApplyComplete} />
           <DetailTemplateSelector onApplyComplete={handleTemplateApplyComplete} compact />
         </div>
       </header>

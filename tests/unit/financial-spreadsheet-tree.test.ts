@@ -5,12 +5,12 @@ import { buildRowTree } from "../../src/features/financial-detail/lib/buildRowTr
 describe("financial spreadsheet row tree", () => {
 	it("aggregates medium rows from small rows and large rows from medium rows", () => {
 		const items: FinancialItem[] = [
-			{ id: "root", profileId: "profile", level: "large", parentId: null, name: "収入", category: "income", autoCalc: "none", rate: null, sortOrder: 0 },
-			{ id: "medium-a", profileId: "profile", level: "medium", parentId: "root", name: "給与", category: "income", autoCalc: "none", rate: null, sortOrder: 0 },
-			{ id: "medium-b", profileId: "profile", level: "medium", parentId: "root", name: "賞与", category: "income", autoCalc: "none", rate: null, sortOrder: 1 },
-			{ id: "small-a1", profileId: "profile", level: "small", parentId: "medium-a", name: "基本給", category: "income", autoCalc: "none", rate: null, sortOrder: 0 },
-			{ id: "small-a2", profileId: "profile", level: "small", parentId: "medium-a", name: "残業代", category: "income", autoCalc: "none", rate: null, sortOrder: 1 },
-			{ id: "small-b1", profileId: "profile", level: "small", parentId: "medium-b", name: "一時金", category: "income", autoCalc: "none", rate: null, sortOrder: 0 },
+			{ id: "root", profileId: "profile", scenarioId: "scenario", level: "large", parentId: null, name: "収入", category: "income", autoCalc: "none", rate: null, sortOrder: 0 },
+			{ id: "medium-a", profileId: "profile", scenarioId: "scenario", level: "medium", parentId: "root", name: "給与", category: "income", autoCalc: "none", rate: null, sortOrder: 0 },
+			{ id: "medium-b", profileId: "profile", scenarioId: "scenario", level: "medium", parentId: "root", name: "賞与", category: "income", autoCalc: "none", rate: null, sortOrder: 1 },
+			{ id: "small-a1", profileId: "profile", scenarioId: "scenario", level: "small", parentId: "medium-a", name: "基本給", category: "income", autoCalc: "none", rate: null, sortOrder: 0 },
+			{ id: "small-a2", profileId: "profile", scenarioId: "scenario", level: "small", parentId: "medium-a", name: "残業代", category: "income", autoCalc: "none", rate: null, sortOrder: 1 },
+			{ id: "small-b1", profileId: "profile", scenarioId: "scenario", level: "small", parentId: "medium-b", name: "一時金", category: "income", autoCalc: "none", rate: null, sortOrder: 0 },
 		];
 
 		const entries: FinancialEntry[] = [

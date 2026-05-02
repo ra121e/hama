@@ -10,10 +10,10 @@ const fixedRootItems = [
 	{ category: "liability", label: "負債" },
 ] as const;
 
-const ensureFixedRoots = async (profileId: string) => {
+const ensureFixedRoots = async (profileId: string, scenarioId: string) => {
 	const existingRoots = await prisma.financialItem.findMany({
 		where: {
-			profileId,
+			scenarioId,
 			level: "large",
 			parentId: null,
 		},
@@ -29,6 +29,7 @@ const ensureFixedRoots = async (profileId: string) => {
 		await prisma.financialItem.create({
 			data: {
 				profileId,
+				scenarioId,
 				level: "large",
 				parentId: null,
 				name: root.label,
@@ -78,18 +79,18 @@ export async function POST(request: Request) {
 		}
 
 		// 既存の中項目・小項目とシナリオのエントリを全て削除してからテンプレートを適用する
-		await ensureFixedRoots(profileId);
+		await ensureFixedRoots(profileId, scenarioId);
 
 		const result = await prisma.$transaction(async (tx) => {
 			// まず対象シナリオのエントリを削除
 			await tx.financialEntry.deleteMany({ where: { scenarioId } });
 
-			// 中項目・小項目を全て削除（大項目の固定ルートは維持）
-			await tx.financialItem.deleteMany({ where: { profileId, level: { in: ["medium", "small"] } } });
+			// シナリオ対応の中項目・小項目を全て削除（大項目の固定ルートは維持）
+			await tx.financialItem.deleteMany({ where: { scenarioId, level: { in: ["medium", "small"] } } });
 
 			// 現在存在する（大項目のみ想定）項目を取得してテンプレート適用に渡す
 			const existingItems = (await tx.financialItem.findMany({
-				where: { profileId },
+				where: { scenarioId },
 				orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
 			})) as FinancialItem[];
 

@@ -7,6 +7,7 @@ export type FinancialAutoCalc = "none" | "compound" | "depreciation" | "cashflow
 export type FinancialItem = {
   id: string;
   profileId: string;
+  scenarioId: string;
   level: FinancialItemLevel;
   parentId: string | null;
   name: string;

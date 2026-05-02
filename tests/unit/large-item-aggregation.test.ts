@@ -14,6 +14,7 @@ describe("大項目の合計計算", () => {
 			{
 				id: "income-large",
 				profileId: "profile",
+				scenarioId: "scenario",
 				level: "large",
 				parentId: null,
 				name: "収入",
@@ -25,6 +26,7 @@ describe("大項目の合計計算", () => {
 			{
 				id: "salary-medium",
 				profileId: "profile",
+				scenarioId: "scenario",
 				level: "medium",
 				parentId: "income-large",
 				name: "給与",
@@ -36,6 +38,7 @@ describe("大項目の合計計算", () => {
 			{
 				id: "bonus-medium",
 				profileId: "profile",
+				scenarioId: "scenario",
 				level: "medium",
 				parentId: "income-large",
 				name: "ボーナス",

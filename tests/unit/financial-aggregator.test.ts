@@ -215,10 +215,10 @@ describe("financial-aggregator", () => {
   describe("aggregateFinancialDataByTimepoints", () => {
     it("資産・収入・支出を4時点で集約し、liability は資産から差し引く", () => {
       const items: FinancialItem[] = [
-        { id: "asset-item", profileId: "profile", level: "large", parentId: null, name: "資産", category: "asset", autoCalc: "none", rate: null, sortOrder: 0 },
-        { id: "liability-item", profileId: "profile", level: "large", parentId: null, name: "負債", category: "liability", autoCalc: "none", rate: null, sortOrder: 1 },
-        { id: "income-item", profileId: "profile", level: "large", parentId: null, name: "収入", category: "income", autoCalc: "none", rate: null, sortOrder: 2 },
-        { id: "expense-item", profileId: "profile", level: "large", parentId: null, name: "支出", category: "expense", autoCalc: "none", rate: null, sortOrder: 3 },
+        { id: "asset-item", profileId: "profile", scenarioId: "scenario-1", level: "large", parentId: null, name: "資産", category: "asset", autoCalc: "none", rate: null, sortOrder: 0 },
+        { id: "liability-item", profileId: "profile", scenarioId: "scenario-1", level: "large", parentId: null, name: "負債", category: "liability", autoCalc: "none", rate: null, sortOrder: 1 },
+        { id: "income-item", profileId: "profile", scenarioId: "scenario-1", level: "large", parentId: null, name: "収入", category: "income", autoCalc: "none", rate: null, sortOrder: 2 },
+        { id: "expense-item", profileId: "profile", scenarioId: "scenario-1", level: "large", parentId: null, name: "支出", category: "expense", autoCalc: "none", rate: null, sortOrder: 3 },
       ];
 
       const entries: FinancialEntry[] = [];

@@ -66,6 +66,7 @@ describe("financial detail helpers", () => {
 		expect(
 			createFinancialItemSchema.parse({
 				profileId: "profile",
+				scenarioId: "scenario",
 				parentId: "root",
 				name: "  家賃  ",
 			}),
@@ -74,9 +75,9 @@ describe("financial detail helpers", () => {
 
 	it("collects descendants recursively", () => {
 		const items: FinancialItem[] = [
-			{ id: "root", profileId: "profile", level: "large", parentId: null, name: "収入", category: "income", autoCalc: "none", rate: null, sortOrder: 0 },
-			{ id: "child", profileId: "profile", level: "medium", parentId: "root", name: "給与", category: "income", autoCalc: "none", rate: null, sortOrder: 0 },
-			{ id: "grandchild", profileId: "profile", level: "small", parentId: "child", name: "基本給", category: "income", autoCalc: "none", rate: null, sortOrder: 0 },
+			{ id: "root", profileId: "profile", scenarioId: "scenario", level: "large", parentId: null, name: "収入", category: "income", autoCalc: "none", rate: null, sortOrder: 0 },
+			{ id: "child", profileId: "profile", scenarioId: "scenario", level: "medium", parentId: "root", name: "給与", category: "income", autoCalc: "none", rate: null, sortOrder: 0 },
+			{ id: "grandchild", profileId: "profile", scenarioId: "scenario", level: "small", parentId: "child", name: "基本給", category: "income", autoCalc: "none", rate: null, sortOrder: 0 },
 		];
 
 		expect(getDescendantIds(items, "root")).toEqual(["child", "grandchild"]);

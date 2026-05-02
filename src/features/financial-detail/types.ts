@@ -16,6 +16,7 @@ export const financialAutoCalcSchema = z.enum(["none", "compound", "depreciation
 export const financialItemSchema = z.object({
 	id: z.string().min(1),
 	profileId: z.string().min(1),
+	scenarioId: z.string().min(1),
 	level: financialItemLevelSchema,
 	parentId: z.string().nullable(),
 	name: z.string().min(1),

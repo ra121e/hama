@@ -329,14 +329,17 @@ export function aggregateToTimepoint(
   if (type === "balance") {
     // 残高系：
     // - 対象月のデータがあれば使用
-    // - なければ 0 を返す（入力されていない時点のデータは表示しない）
+    // - なければ最新月の値を返す（延伸）
     const entry = entries.find((e) => e.yearMonth === targetMonth);
     if (isFiniteNumber(entry?.value)) {
       return entry.value;
     }
 
-    // 対象月のデータがない場合は 0（ユーザが入力していない時点は表示しない）
-    return 0;
+    // 対象月のデータがない場合は最新月の値を返す（延伸）
+    const latestEntry = entries.reduce((latest, current) => {
+      return monthDiff(current.yearMonth, latest.yearMonth) > 0 ? current : latest;
+    });
+    return isFiniteNumber(latestEntry?.value) ? latestEntry.value : 0;
   } else {
     // フロー系：
     // - 対象時点から連続12ヶ月の合計を返す
