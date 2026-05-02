@@ -13,7 +13,9 @@ import {
 	DialogFooter,
 	DialogHeader,
 	DialogTitle,
+	DialogClose,
 } from "@/components/ui/dialog";
+import { useToast } from "@/components/ui/use-toast";
 import { Input } from "@/components/ui/input";
 import { buildFinancialItemTree, getLevelLabel, getRootLabel, getSiblingOrder, type FinancialItemTreeNode } from "@/features/financial-detail/lib/financial-items";
 import { useFinancialItems } from "@/features/financial-detail/hooks/useFinancialItems";
@@ -55,11 +57,13 @@ const ItemActionButton = ({
 
 interface FinancialItemManagerProps {
 	onApplyComplete?: () => void | Promise<void>;
+	onClose?: () => void; // ダイアログを閉じるためのコールバック
 }
 
-export function FinancialItemManager({ onApplyComplete }: FinancialItemManagerProps) {
+export function FinancialItemManager({ onApplyComplete, onClose }: FinancialItemManagerProps) {
 	const { items, isLoading, error, profileId, scenarioId, createFinancialItem, renameFinancialItem, deleteFinancialItem, moveFinancialItem } =
 		useFinancialItems();
+	const { toast } = useToast();
 	const tree = useMemo(() => buildFinancialItemTree(items), [items]);
 	const [openRootIds, setOpenRootIds] = useState<string[]>([]);
 	const [dialogState, setDialogState] = useState<DialogState | null>(null);
@@ -105,10 +109,16 @@ export function FinancialItemManager({ onApplyComplete }: FinancialItemManagerPr
 
 	const handleApply = async () => {
 		setIsApplying(true);
+		setActionError(null);
 		try {
 			await onApplyComplete?.();
+			// 成功時はダイアログを閉じ、成功トーストを表示
+			onClose?.();
+			toast({ title: "財務項目を更新しました" });
 		} catch (error) {
-			setActionError(error instanceof Error ? error.message : "適用に失敗しました");
+			const errorMessage = error instanceof Error ? error.message : "適用に失敗しました";
+			setActionError(errorMessage);
+			toast({ variant: "destructive", title: "エラー", description: errorMessage });
 		} finally {
 			setIsApplying(false);
 		}
@@ -378,16 +388,17 @@ export function FinancialItemManager({ onApplyComplete }: FinancialItemManagerPr
 				</DialogContent>
 			</Dialog>
 
-			<div className="flex gap-2">
-				<Button
-					type="button"
-					onClick={() => void handleApply()}
-					disabled={isApplying || isLoading}
-					className="ml-auto"
+			<DialogFooter>
+				<DialogClose
+					className="inline-flex h-8 items-center justify-center rounded-lg border border-border bg-background px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-50"
+					disabled={isApplying}
 				>
-					{isApplying ? "適用中..." : "適用"}
+					キャンセル
+				</DialogClose>
+				<Button type="button" onClick={() => void handleApply()} disabled={isApplying || isLoading}>
+					{isApplying ? "適用中..." : "適用する"}
 				</Button>
-			</div>
+			</DialogFooter>
 		</div>
 	);
 }
