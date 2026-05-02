@@ -69,22 +69,22 @@ export default function Home() {
                   ) : null}
                 </CardHeader>
                 <CardContent className="space-y-5">
-                  {/* シンプルなプラン選択ドロップダウン（ダッシュボードでは新規作成UIを表示しない） */}
-                  <div className="mb-3">
-                    <PlanSelector />
+                  {/* プラン選択と詳細入力ボタンを横並びで上部に配置 */}
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <div className="flex items-center">
+                      <PlanSelector />
+                    </div>
+                    <div className="flex-shrink-0">
+                      <Link
+                        href="/input/detail"
+                        className="inline-flex items-center rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white shadow-md hover:opacity-95"
+                      >
+                        詳細財務入力へ移動
+                      </Link>
+                    </div>
                   </div>
                   <TimepointSelector />
                   <HappinessSlider />
-                  {/* 簡易財務入力はフェーズFで UI から非表示。詳細入力への案内を表示 */}
-                  <div className="mt-2">
-                    <Link
-                      href="/input/detail"
-                      className="inline-flex items-center rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-white shadow-sm hover:opacity-95"
-                    >
-                      詳細財務入力へ移動
-                    </Link>
-                    <p className="mt-2 text-xs text-muted-foreground">詳細な財務入力は /input/detail で行ってください。</p>
-                  </div>
                 </CardContent>
               </Card>
             </div>

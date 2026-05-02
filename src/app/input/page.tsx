@@ -2,9 +2,7 @@
 
 import { useEffect } from "react";
 import Link from "next/link";
-import { HappinessSlider } from "@/features/happiness/components/HappinessSlider";
 import { PlanSwitcher } from "@/features/plan/components/PlanSwitcher";
-import { TimepointSelector } from "@/features/scenario/components/TimepointSelector";
 import { useProfileStore } from "@/store/profileStore";
 
 export default function InputPage() {
@@ -52,13 +50,13 @@ export default function InputPage() {
           </div>
         ) : null}
 
-        <TimepointSelector className="mt-2" />
+        {/* 入力ページを簡素化：時間軸選択はダッシュボードへ集約 */}
       </header>
 
       {isHydrated ? (
         <div className="space-y-6">
           <PlanSwitcher />
-          {/* 簡易財務入力は UI から非表示。詳細入力へ誘導する大きな CTA を配置 */}
+          {/* 詳細入力への CTA のみを残す（シンプル化） */}
           <div className="rounded-md border border-border bg-card px-6 py-6 text-center">
             <h2 className="text-lg font-medium">詳細財務入力へ移動</h2>
             <p className="mt-2 text-sm text-muted-foreground">詳細かつ正確な財務入力は詳細入力画面で行ってください。テンプレートから一括入力することもできます。</p>
@@ -68,7 +66,6 @@ export default function InputPage() {
               </Link>
             </div>
           </div>
-          <HappinessSlider />
         </div>
       ) : (
         <div className="rounded-md border border-border px-4 py-6 text-sm text-muted-foreground">
