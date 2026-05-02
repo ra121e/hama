@@ -575,8 +575,7 @@ export function FinancialItemManagerBuffered({ onApplyComplete, onClose, isOpen 
 						</DialogContent>
 					</Dialog>
 
-					<div className="pb-6" />
-					<DialogFooter className="pt-6">
+					<DialogFooter className="pt-6 pb-4 flex justify-end items-center gap-3">
 						<DialogClose
 							className="inline-flex h-10 items-center justify-center rounded-lg border border-border bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-50 shadow-sm"
 							disabled={isApplying}
