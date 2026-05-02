@@ -673,6 +673,7 @@ export const useProfileStore = create<ProfileStoreState>((set, get) => ({
 		set({ isLoading: true, errorMessage: null });
 		try {
 			const currentTimepoint = get().activeTimepoint;
+			const currentActiveScenarioId = get().activeScenarioId;
 			const response = await fetch("/api/profile", {
 				method: "GET",
 				headers: {
@@ -687,18 +688,21 @@ export const useProfileStore = create<ProfileStoreState>((set, get) => ({
 
 			const payload = (await response.json()) as ServerPayload;
 			const hydrated = hydrateFromServer(payload);
+			// クライアント側で現在選択されているシナリオを優先（テンプレート適用後など、シナリオ選択を保持したい場合）
+			const activeScenarioIdToUse = currentActiveScenarioId || hydrated.activeScenarioId;
 			const nextProfile = resolveProfileForSelection(
 				hydrated.profile,
 				hydrated.snapshotsByScenario,
-				hydrated.activeScenarioId,
+				activeScenarioIdToUse,
 				currentTimepoint,
 			);
 
 			set({
 				...hydrated,
 				profile: nextProfile,
+				activeScenarioId: activeScenarioIdToUse,
 				financialDataByScenario: {},
-				hamaScore: calcHamaScoreForState(nextProfile, {}, hydrated.activeScenarioId, currentTimepoint),
+				hamaScore: calcHamaScoreForState(nextProfile, {}, activeScenarioIdToUse, currentTimepoint),
 				activeTimepoint: currentTimepoint,
 				isHydrated: true,
 				isLoading: false,

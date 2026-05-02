@@ -40,12 +40,14 @@ const templateTone: Record<LifecycleTemplateId, string> = {
 const formatMoney = (value: number) => `${Math.round(value / 10000).toLocaleString("ja-JP")}万円`;
 
 type DetailTemplateSelectorProps = {
-	onApplyComplete?: () => void;
+	onApplyComplete?: () => void | Promise<void>;
+	compact?: boolean;
 };
 
-export function DetailTemplateSelector({ onApplyComplete }: DetailTemplateSelectorProps) {
+export function DetailTemplateSelector({ onApplyComplete, compact = false }: DetailTemplateSelectorProps) {
 	const profile = useProfileStore((state) => state.profile);
 	const activeScenarioId = useProfileStore((state) => state.activeScenarioId || "base");
+	const isBaseCase = activeScenarioId === "base";
 	const [templates, setTemplates] = useState<LifecycleTemplate[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
 	const [loadError, setLoadError] = useState<string | null>(null);
@@ -101,10 +103,24 @@ export function DetailTemplateSelector({ onApplyComplete }: DetailTemplateSelect
 	}, [selectedTemplate]);
 
 	const openSelector = () => {
-		setIsDialogOpen(true);
-	};
+		if (isBaseCase) {
+ 			toast({
+ 				variant: "destructive",
+ 				title: "テンプレート適用不可",
+ 				description: "ベースケースにはテンプレートを適用できません。カスタムプランを選択してください。",
+ 			});
+ 			return;
+ 		}
+
+ 		setIsDialogOpen(true);
+    };
 
 	const openConfirm = (template: LifecycleTemplate) => {
+		if (isBaseCase) {
+			setApplyError("ベースケースにはテンプレートを適用できません");
+			return;
+		}
+
 		setSelectedTemplate(template);
 		setApplyError(null);
 	};
@@ -146,13 +162,12 @@ export function DetailTemplateSelector({ onApplyComplete }: DetailTemplateSelect
 			}
 
 			const result = await response.json();
+			await onApplyComplete?.();
+			closeDialog();
 			toast({
 				title: "テンプレートを適用しました",
 				description: `${result.itemsCreated}個の財務項目と${result.entriesCreated}個のエントリを追加しました。`,
 			});
-
-			closeDialog();
-			onApplyComplete?.();
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : "テンプレート適用に失敗しました";
 			setApplyError(errorMessage);
@@ -170,24 +185,43 @@ export function DetailTemplateSelector({ onApplyComplete }: DetailTemplateSelect
 	return (
 		<div className="space-y-3">
 			<div className="flex flex-wrap items-center justify-between gap-3">
-				<div>
-					<h3 className="text-sm font-semibold">テンプレートから入力する</h3>
-					<p className="text-xs text-muted-foreground">ライフステージ別の詳細財務テンプレートをポップアップで選択できます。</p>
+				{!compact ? (
+					<div>
+						<h3 className="text-sm font-semibold">テンプレートから入力する</h3>
+						<p className="text-xs text-muted-foreground">ライフステージ別の詳細財務テンプレートをポップアップで選択できます。</p>
+					</div>
+				) : null}
+
+				<div className="ml-auto">
+					<Button type="button" onClick={openSelector} disabled={isBaseCase}>
+						テンプレートを開く
+					</Button>
 				</div>
-				<Button type="button" onClick={openSelector}>
-					テンプレートを開く
-				</Button>
 			</div>
 
 			{loadError ? <p className="text-xs text-destructive">{loadError}</p> : null}
 			{isLoading ? <p className="text-xs text-muted-foreground">テンプレートを読み込み中...</p> : null}
 
-			<Dialog open={isDialogOpen} onOpenChange={(open) => (open ? setIsDialogOpen(true) : closeDialog())}>
+			<Dialog
+				open={isDialogOpen}
+				onOpenChange={(open) => {
+					if (open) {
+						setIsDialogOpen(true);
+						return;
+					}
+
+					if (!isApplying) {
+						closeDialog();
+					}
+				}}
+			>
 				<DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-4xl">
 					<DialogHeader>
 						<DialogTitle>{selectedTemplate ? "テンプレートを適用しますか？" : "テンプレートを選択"}</DialogTitle>
 						<DialogDescription>
-							詳細財務入力に必要な項目と月次データだけを、安全に追加します。
+							{selectedTemplate
+								? "選択すると既存の中項目・小項目と当該プランの全てのエントリは削除され、テンプレートのデータで上書きされます。よろしければ適用してください。"
+								: "詳細財務入力に必要な項目と月次データだけを、安全に追加します。"}
 						</DialogDescription>
 					</DialogHeader>
 
@@ -256,11 +290,14 @@ export function DetailTemplateSelector({ onApplyComplete }: DetailTemplateSelect
 
 					<DialogFooter>
 						{selectedTemplate ? (
-							<Button type="button" variant="secondary" onClick={resetSelection}>
+							<Button type="button" variant="secondary" onClick={resetSelection} disabled={isApplying}>
 								戻る
 							</Button>
 						) : null}
-						<DialogClose className="inline-flex h-8 items-center justify-center rounded-lg border border-border bg-background px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted">
+						<DialogClose
+							className="inline-flex h-8 items-center justify-center rounded-lg border border-border bg-background px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-50"
+							disabled={isApplying}
+						>
 							キャンセル
 						</DialogClose>
 						{selectedTemplate ? (
@@ -269,7 +306,10 @@ export function DetailTemplateSelector({ onApplyComplete }: DetailTemplateSelect
 							</Button>
 						) : null}
 					</DialogFooter>
-					<DialogClose className="absolute right-4 top-4 inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+					<DialogClose
+						className="absolute right-4 top-4 inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
+						disabled={isApplying}
+					>
 						<X className="size-4" />
 						<span className="sr-only">閉じる</span>
 					</DialogClose>

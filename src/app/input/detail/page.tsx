@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { FinancialItemManagerDialog } from "@/features/financial-detail/components/FinancialItemManagerDialog";
 import { DetailTemplateSelector } from "@/features/financial-detail/components/DetailTemplateSelector";
 import { useToast } from "@/components/ui/use-toast";
@@ -14,11 +14,39 @@ export default function DetailInputPage() {
   const activePlan = plans.find((p) => p.id === activeScenarioId);
   const { toast } = useToast();
   const loadProfileFromDb = useProfileStore((state) => state.loadProfileFromDb);
+  const [refreshVersion, setRefreshVersion] = useState(0);
+  const refreshCompletionResolverRef = useRef<(() => void) | null>(null);
 
   const handleTemplateApplyComplete = async () => {
     // テンプレート適用後、プロファイルを再読込してスプレッドシートを更新
     await loadProfileFromDb();
+    // スプレッドシートを強制的に再マウントしてデータを再読み込みさせる
+    await new Promise<void>((resolve) => {
+      refreshCompletionResolverRef.current = resolve;
+      setRefreshVersion((current) => current + 1);
+    });
   };
+
+  useEffect(() => {
+    if (refreshVersion === 0) {
+      return;
+    }
+
+    let secondFrame = 0;
+    const firstFrame = window.requestAnimationFrame(() => {
+      secondFrame = window.requestAnimationFrame(() => {
+        refreshCompletionResolverRef.current?.();
+        refreshCompletionResolverRef.current = null;
+      });
+    });
+
+    return () => {
+      window.cancelAnimationFrame(firstFrame);
+      if (secondFrame) {
+        window.cancelAnimationFrame(secondFrame);
+      }
+    };
+  }, [refreshVersion]);
 
   return (
     <main className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
@@ -36,16 +64,18 @@ export default function DetailInputPage() {
           </p>
         </div>
 
-        <FinancialItemManagerDialog />
+        <div className="flex items-center gap-3">
+          <FinancialItemManagerDialog />
+          <DetailTemplateSelector onApplyComplete={handleTemplateApplyComplete} compact />
+        </div>
       </header>
 
       <section className="rounded-3xl border border-border bg-card/80 p-4 shadow-sm sm:p-6">
-        <div className="mb-6 rounded-lg border border-border/50 bg-muted/40 p-4">
-          <DetailTemplateSelector onApplyComplete={handleTemplateApplyComplete} />
-        </div>
+        {/* テンプレートトリガーはヘッダーに移動しました */}
 
         <div className="overflow-x-auto">
           <FinancialSpreadsheet
+            key={refreshVersion}
             scenarioId={activeScenarioId}
             onYearlyExpanded={(expandedCount) => {
               const description =

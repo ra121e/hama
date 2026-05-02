@@ -65,6 +65,11 @@ export async function POST(request: Request) {
 			);
 		}
 
+		// ベースケース（デフォルトプラン）にはテンプレートを適用しない
+		if (scenarioId === "base") {
+			return Response.json({ message: "ベースケースにはテンプレートを適用できません" }, { status: 400 });
+		}
+
 		if (!template.financialDetail?.items || !template.financialDetail?.entries) {
 			return Response.json(
 				{ message: "Template must include financialDetail with items and entries" },
@@ -72,17 +77,23 @@ export async function POST(request: Request) {
 			);
 		}
 
+		// 既存の中項目・小項目とシナリオのエントリを全て削除してからテンプレートを適用する
 		await ensureFixedRoots(profileId);
 
 		const result = await prisma.$transaction(async (tx) => {
+			// まず対象シナリオのエントリを削除
+			await tx.financialEntry.deleteMany({ where: { scenarioId } });
+
+			// 中項目・小項目を全て削除（大項目の固定ルートは維持）
+			await tx.financialItem.deleteMany({ where: { profileId, level: { in: ["medium", "small"] } } });
+
+			// 現在存在する（大項目のみ想定）項目を取得してテンプレート適用に渡す
 			const existingItems = (await tx.financialItem.findMany({
 				where: { profileId },
 				orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
 			})) as FinancialItem[];
 
-			const existingEntries = (await tx.financialEntry.findMany({
-				where: { scenarioId },
-			})) as FinancialEntry[];
+			const existingEntries: FinancialEntry[] = [];
 
 			return applyLifecycleTemplate({
 				profileId,
