@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, beforeAll, afterAll, vi } from "vitest";
 import type { FinancialEntry, FinancialItem } from "../../src/entities/financial-item";
 import type { LifecycleTemplate } from "../../src/features/plan/lib/lifecycleTemplates";
 import { applyLifecycleTemplate } from "../../src/features/financial-detail/lib/applyLifecycleTemplate";
@@ -26,6 +26,14 @@ const makeEntry = (overrides: Partial<FinancialEntry>): FinancialEntry => ({
 });
 
 describe("applyLifecycleTemplate", () => {
+	beforeAll(() => {
+		// テンプレート内の "2026-04" を current として扱うため、テスト時刻を固定
+		vi.setSystemTime(new Date("2026-04-15T12:00:00Z"));
+	});
+
+	afterAll(() => {
+		vi.useRealTimers();
+	});
 	it("creates only missing descendants after existing parents", async () => {
 		const existingItems = [
 			makeItem({ id: "root-income", level: "large", parentId: null, name: "収入", category: "income", sortOrder: 0 }),

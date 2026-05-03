@@ -108,6 +108,19 @@ export async function applyLifecycleTemplate({
 	let itemsCreated = 0;
 	let entriesCreated = 0;
 
+	// 現在の年月の月初を基準に、それ以前のエントリは適用しない
+	const now = new Date();
+	const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+	const isBeforeCurrentMonth = (yearMonth: string) => {
+		const parts = yearMonth.split("-");
+		if (parts.length < 2) return false;
+		const y = Number(parts[0]);
+		const m = Number(parts[1]);
+		if (Number.isNaN(y) || Number.isNaN(m)) return false;
+		const d = new Date(y, m - 1, 1);
+		return d < currentMonthStart;
+	};
 	for (const templateItem of template.financialDetail.items) {
 		if (templateItem.level === "large") {
 			const rootItem = existingRootItems.get(templateItem.category);
@@ -163,6 +176,11 @@ export async function applyLifecycleTemplate({
 		const dbItemId = templateIdToDbId.get(entry.itemId);
 		if (!dbItemId) {
 			throw new Error(`Item not found for entry: ${entry.itemId}`);
+		}
+
+		// 過去月は適用しない
+		if (isBeforeCurrentMonth(entry.yearMonth)) {
+			continue;
 		}
 
 		const entryKey = `${dbItemId}|${entry.yearMonth}`;

@@ -40,27 +40,16 @@
       { "id": "liabilities_loans_housing", "level": "small", "parentId": "liabilities_loans", "name": "住宅ローン", "category": "liability", "autoCalc": "none", "rate": null }
     ],
     "entries": [
-      { "itemId": "income_salary_base", "yearMonth": "2026-04", "value": 480000 },
-      { "itemId": "income_salary_bonus", "yearMonth": "2026-04", "value": 120000 },
-      { "itemId": "income_side_freelance", "yearMonth": "2026-04", "value": 60000 },
       { "itemId": "income_salary_base", "yearMonth": "2026-05", "value": 480000 },
       { "itemId": "income_salary_bonus", "yearMonth": "2026-05", "value": 120000 },
       { "itemId": "income_side_freelance", "yearMonth": "2026-05", "value": 60000 },
-      { "itemId": "expense_housing_rent", "yearMonth": "2026-04", "value": 140000 },
-      { "itemId": "expense_housing_utilities", "yearMonth": "2026-04", "value": 32000 },
-      { "itemId": "expense_food_meals", "yearMonth": "2026-04", "value": 100000 },
-      { "itemId": "expense_education_school", "yearMonth": "2026-04", "value": 60000 },
-      { "itemId": "expense_education_lessons", "yearMonth": "2026-04", "value": 20000 },
       { "itemId": "expense_housing_rent", "yearMonth": "2026-05", "value": 140000 },
       { "itemId": "expense_housing_utilities", "yearMonth": "2026-05", "value": 32000 },
       { "itemId": "expense_food_meals", "yearMonth": "2026-05", "value": 100000 },
       { "itemId": "expense_education_school", "yearMonth": "2026-05", "value": 60000 },
       { "itemId": "expense_education_lessons", "yearMonth": "2026-05", "value": 20000 },
-      { "itemId": "assets_cash_savings", "yearMonth": "2026-04", "value": 3600000 },
-      { "itemId": "assets_cash_term", "yearMonth": "2026-04", "value": 2700000 },
       { "itemId": "assets_cash_savings", "yearMonth": "2026-05", "value": 3650000 },
       { "itemId": "assets_cash_term", "yearMonth": "2026-05", "value": 2730000 },
-      { "itemId": "liabilities_loans_housing", "yearMonth": "2026-04", "value": 2700000 },
       { "itemId": "liabilities_loans_housing", "yearMonth": "2026-05", "value": 2680000 }
     ]
   }
