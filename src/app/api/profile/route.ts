@@ -126,17 +126,10 @@ const buildSnapshotCreateInput = (
 };
 
 const createBaseScenarioIfMissing = async (tx: Prisma.TransactionClient, profileId: string) => {
-  const existingBaseScenario = await tx.scenario.findUnique({
+  await tx.scenario.upsert({
     where: { id: DEFAULT_SCENARIO_ID },
-    select: { id: true },
-  });
-
-  if (existingBaseScenario) {
-    return;
-  }
-
-  await tx.scenario.create({
-    data: {
+    update: {},
+    create: {
       id: DEFAULT_SCENARIO_ID,
       profileId,
       name: DEFAULT_SCENARIO_NAME,

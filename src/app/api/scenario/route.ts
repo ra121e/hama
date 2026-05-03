@@ -24,22 +24,15 @@ const ensureProfile = async () => {
 };
 
 const ensureBaseScenario = async (profileId: string) => {
-  const existing = await prisma.scenario.findUnique({ where: { id: "base" } });
-
-  if (existing) {
-    return prisma.scenario.update({
-      where: { id: "base" },
-      data: {
-        profileId,
-        name: "ベースケース",
-        type: "base",
-        isDefault: true,
-      },
-    });
-  }
-
-  return prisma.scenario.create({
-    data: {
+  return prisma.scenario.upsert({
+    where: { id: "base" },
+    update: {
+      profileId,
+      name: "ベースケース",
+      type: "base",
+      isDefault: true,
+    },
+    create: {
       id: "base",
       profileId,
       name: "ベースケース",
