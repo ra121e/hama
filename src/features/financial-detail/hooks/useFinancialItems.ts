@@ -101,7 +101,13 @@ export function useFinancialItems() {
 		});
 
 		if (!response.ok) {
-			throw new Error(await parseResponseError(response));
+			const errorMessage = await parseResponseError(response);
+			if (response.status === 404) {
+				await loadItems(state.scenarioId);
+				return;
+			}
+
+			throw new Error(errorMessage);
 		}
 
 		await loadItems(state.scenarioId);
@@ -124,7 +130,13 @@ export function useFinancialItems() {
 		});
 
 		if (!response.ok) {
-			throw new Error(await parseResponseError(response));
+			const errorMessage = await parseResponseError(response);
+			if (response.status === 400) {
+				await loadItems(state.scenarioId);
+				return;
+			}
+
+			throw new Error(errorMessage);
 		}
 
 		await loadItems(state.scenarioId);

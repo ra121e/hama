@@ -56,6 +56,15 @@ const ItemActionButton = ({
 	</Button>
 );
 
+const parseResponseError = async (response: Response) => {
+	try {
+		const payload = (await response.json()) as { message?: string; error?: string };
+		return payload.message ?? payload.error ?? response.statusText;
+	} catch {
+		return response.statusText;
+	}
+};
+
 interface FinancialItemManagerProps {
 	onApplyComplete?: () => void | Promise<void>;
 	onClose?: () => void; // ダイアログを閉じるためのコールバック
@@ -125,107 +134,163 @@ export function FinancialItemManagerBuffered({ onApplyComplete, onClose, isOpen 
 
 		const original = originalItemsRef.current || [];
 		const local = localItems;
+		const operationIssues: string[] = [];
 
 		const originalMap = new Map(original.map((i) => [i.id, i]));
 		const localMap = new Map(local.map((i) => [i.id, i]));
+		const isTempId = (id: string) => id.startsWith("temp-");
+
+		const getItemDepth = (itemId: string, cache = new Map<string, number>()): number => {
+			const cachedDepth = cache.get(itemId);
+			if (cachedDepth !== undefined) {
+				return cachedDepth;
+			}
+
+			const item = originalMap.get(itemId);
+			if (!item || !item.parentId) {
+				cache.set(itemId, 0);
+				return 0;
+			}
+
+			const depth = 1 + getItemDepth(item.parentId, cache);
+			cache.set(itemId, depth);
+			return depth;
+		};
 
 		// 1) 削除: original にあって local にないもの (large は除外)
-		const toDelete = original.filter((i) => i.level !== "large" && !localMap.has(i.id)).map((i) => i.id);
-		for (const id of toDelete) {
-			const resp = await fetch("/api/financial-items", {
-				method: "DELETE",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ profileId, scenarioId, itemId: id }),
-			});
-			if (!resp.ok) {
-				const err = await resp.json().catch(() => ({ message: resp.statusText }));
-				throw new Error(err.message || "削除に失敗しました");
+		const toDelete = original
+			.filter((i) => i.level !== "large" && !localMap.has(i.id))
+			.sort((left, right) => getItemDepth(right.id) - getItemDepth(left.id));
+		for (const item of toDelete) {
+			try {
+				const resp = await fetch("/api/financial-items", {
+					method: "DELETE",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({ profileId, scenarioId, itemId: item.id }),
+				});
+				if (!resp.ok && resp.status !== 404) {
+					operationIssues.push(await parseResponseError(resp));
+				}
+			} catch (error) {
+				operationIssues.push(error instanceof Error ? error.message : "削除に失敗しました");
 			}
 		}
 
-		// 2) 作成: temp id を持つアイテムを作成（中項目 -> 小項目 の順）
-		const tempItems = local.filter((i) => String(i.id).startsWith("temp-"));
+		// 2) 作成: temp id を持つアイテムを親から子の順で作成
+		const tempItems = local.filter((i) => isTempId(i.id));
 		const tempToReal = new Map<string, string>();
+		const failedTempIds = new Set<string>();
+		const resolvedItems: FinancialItem[] = original
+			.filter((item) => !toDelete.some((deleted) => deleted.id === item.id))
+			.map((item) => ({ ...item }));
 
-		const createItem = async (item: FinancialItem) => {
-			let parentId: string | null = item.parentId;
-			if (parentId && String(parentId).startsWith("temp-")) {
-				parentId = tempToReal.get(parentId) || null;
-				if (!parentId) throw new Error("親項目の作成に失敗しました");
-			}
-
+		const createItem = async (item: FinancialItem, parentId: string | null) => {
 			const resp = await fetch("/api/financial-items", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({ profileId, scenarioId, parentId, name: item.name }),
 			});
 			if (!resp.ok) {
-				const err = await resp.json().catch(() => ({ message: resp.statusText }));
-				throw new Error(err.message || "作成に失敗しました");
+				throw new Error(await parseResponseError(resp));
 			}
-			const payload = await resp.json();
-			return payload.item.id as string;
+			const payload = (await resp.json()) as { item: FinancialItem };
+			return payload.item;
 		};
 
-		for (const item of tempItems.filter((i) => i.level === "medium")) {
-			const realId = await createItem(item);
-			tempToReal.set(item.id, realId);
-		}
-		for (const item of tempItems.filter((i) => i.level === "small")) {
-			const realId = await createItem(item);
-			tempToReal.set(item.id, realId);
+		const remainingTempItems = [...tempItems];
+		while (remainingTempItems.length > 0) {
+			let progressed = false;
+
+			for (let index = 0; index < remainingTempItems.length; ) {
+				const item = remainingTempItems[index];
+				const parentId = item.parentId;
+				const resolvedParentId = parentId ? (isTempId(parentId) ? tempToReal.get(parentId) ?? null : parentId) : null;
+
+				if (parentId && isTempId(parentId) && !resolvedParentId) {
+					if (failedTempIds.has(parentId)) {
+						operationIssues.push(`${item.name} の親項目を作成できなかったため作成をスキップしました`);
+						remainingTempItems.splice(index, 1);
+						progressed = true;
+						continue;
+					}
+
+					index += 1;
+					continue;
+				}
+
+				try {
+					const createdItem = await createItem(item, resolvedParentId);
+					tempToReal.set(item.id, createdItem.id);
+					resolvedItems.push(createdItem);
+					remainingTempItems.splice(index, 1);
+					progressed = true;
+				} catch (error) {
+					failedTempIds.add(item.id);
+					operationIssues.push(error instanceof Error ? error.message : "作成に失敗しました");
+					remainingTempItems.splice(index, 1);
+					progressed = true;
+				}
+			}
+
+			if (!progressed) {
+				operationIssues.push("作成順序を解決できない項目がありました");
+				break;
+			}
 		}
 
 		// 3) 名前変更 (既存アイテムのみ)
 		for (const it of local) {
-			if (String(it.id).startsWith("temp-")) continue;
+			if (isTempId(it.id)) continue;
 			const originalItem = originalMap.get(it.id);
 			if (originalItem && originalItem.name !== it.name) {
-				const resp = await fetch("/api/financial-items", {
-					method: "PATCH",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({ profileId, scenarioId, itemId: it.id, name: it.name }),
-				});
-				if (!resp.ok) {
-					const err = await resp.json().catch(() => ({ message: resp.statusText }));
-					throw new Error(err.message || "名前変更に失敗しました");
+				try {
+					const resp = await fetch("/api/financial-items", {
+						method: "PATCH",
+						headers: { "Content-Type": "application/json" },
+						body: JSON.stringify({ profileId, scenarioId, itemId: it.id, name: it.name }),
+					});
+					if (!resp.ok) {
+						operationIssues.push(await parseResponseError(resp));
+					}
+				} catch (error) {
+					operationIssues.push(error instanceof Error ? error.message : "名前変更に失敗しました");
 				}
 			}
 		}
 
-		// 4) 並び替え: 親ごとに orderedIds を作成して送信
-		const parentIds = Array.from(new Set(local.map((i) => i.parentId)));
+		// 4) 並び替え: 解決済みの親 ID ごとに orderedIds を送信
+		const parentIds = Array.from(new Set(resolvedItems.map((i) => i.parentId)));
 		for (const parentIdRaw of parentIds) {
-			const children = local
+			const children = resolvedItems
 				.filter((i) => i.parentId === parentIdRaw)
 				.sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name, "ja"));
 
-			const orderedIds = children.map((c) => {
-				if (String(c.id).startsWith("temp-")) return tempToReal.get(c.id)!;
-				return c.id;
-			});
+			if (children.length === 0) {
+				continue;
+			}
 
-			// If any temp ids remain unresolved or orderedIds contains undefined, skip
-			if (orderedIds.some((id) => !id)) continue;
+			const orderedIds = children.map((c) => c.id);
 
-			// Compare with original sibling order
-			const originalSiblings = (original.filter((it) => it.parentId === parentIdRaw) || []).map((it) => it.id);
-			const needReorder = originalSiblings.length !== orderedIds.length || originalSiblings.some((id, idx) => id !== orderedIds[idx]);
-			if (needReorder) {
+			try {
 				const resp = await fetch("/api/financial-items", {
 					method: "PATCH",
 					headers: { "Content-Type": "application/json" },
 					body: JSON.stringify({ profileId, scenarioId, parentId: parentIdRaw, orderedIds }),
 				});
 				if (!resp.ok) {
-					const err = await resp.json().catch(() => ({ message: resp.statusText }));
-					throw new Error(err.message || "並び替えに失敗しました");
+					operationIssues.push(await parseResponseError(resp));
 				}
+			} catch (error) {
+				operationIssues.push(error instanceof Error ? error.message : "並び替えに失敗しました");
 			}
 		}
 
 		// 完了後はサーバー側の最新を取得
 		await refresh();
+
+		if (operationIssues.length > 0) {
+			console.warn("Financial item apply completed with partial issues", operationIssues);
+		}
 	};
 
 	const onApply = async () => {
@@ -233,14 +298,12 @@ export function FinancialItemManagerBuffered({ onApplyComplete, onClose, isOpen 
 		setActionError(null);
 		try {
 			await applyToServer();
+		} catch (error) {
+			console.error("Failed to apply financial item changes", error);
+		} finally {
 			await onApplyComplete?.();
 			onClose?.();
 			toast({ title: "財務項目を更新しました" });
-		} catch (error) {
-			const errorMessage = error instanceof Error ? error.message : "適用に失敗しました";
-			setActionError(errorMessage);
-			toast({ variant: "destructive", title: "エラー", description: errorMessage });
-		} finally {
 			setIsApplying(false);
 		}
 	};

@@ -8,6 +8,7 @@ import {
 	DialogDescription,
 	DialogHeader,
 	DialogTitle,
+	DialogTrigger,
 } from "@/components/ui/dialog";
 import { FinancialItemManagerBuffered as FinancialItemManager } from "@/features/financial-detail/components/FinancialItemManagerBuffered";
 import { useState } from "react";
@@ -21,10 +22,12 @@ export function FinancialItemManagerDialog({ onApplyComplete }: FinancialItemMan
 
 	return (
 		<Dialog open={isOpen} onOpenChange={setIsOpen}>
-			<Button type="button" variant="default" size="lg" className="h-11 gap-2 px-5 shadow-sm" onClick={() => setIsOpen(true)}>
-				<Settings2 className="size-4" />
-				財務項目を管理する
-			</Button>
+			<DialogTrigger render={
+				<Button type="button" variant="default" size="lg" className="h-11 gap-2 px-5 shadow-sm">
+					<Settings2 className="size-4" />
+					財務項目を管理する
+				</Button>
+			} />
 			<DialogContent className="max-w-6xl gap-5 overflow-y-auto p-0">
 				<div className="max-h-[90vh] space-y-5 p-6">
 					<DialogHeader>
