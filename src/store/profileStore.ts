@@ -10,6 +10,10 @@ import {
 	type Timepoint,
 } from "@/entities/profile";
 import { calcHamaScoreFromProfile } from "@/shared/lib/hama-score";
+import {
+	resolveActiveScenarioIdFromServer,
+	resolveScenarioIdForPersist,
+} from "@/shared/lib/scenario-id";
 import type { FinancialData, FinancialDataByTimepoint } from "@/shared/lib/financial-aggregator";
 import type { Snapshot } from "@/entities/scenario";
 import type { PlanSummary } from "@/features/plan/types";
@@ -38,6 +42,7 @@ type ServerPayload = {
 		};
 	};
 	activeScenarioId: string;
+	baseScenarioId?: string;
 	snapshotsByScenario: Record<string, Record<string, Snapshot[]>>;
 	plans?: PlanSummary[];
 	scenarios?: PlanSummary[];
@@ -249,6 +254,7 @@ const normalizePlans = (payload: ServerPayload): PlanSummary[] => {
 const hydrateFromServer = (payload: ServerPayload): {
 	profile: Profile;
 	activeScenarioId: string;
+	baseScenarioId?: string;
 	snapshotsByScenario: Record<string, ScenarioSnapshotState>;
 	plans: PlanSummary[];
 	hamaScore: number;
@@ -272,19 +278,19 @@ const hydrateFromServer = (payload: ServerPayload): {
 		},
 	};
 
+	const plans = normalizePlans(payload);
 	const fallbackScenarioId =
 		payload.activeScenarioId ||
-		payload.scenarios?.find((plan) => plan.type === "base")?.id ||
-		payload.plans?.find((plan) => plan.type === "base")?.id ||
-		payload.scenarios?.[0]?.id ||
-		payload.plans?.[0]?.id ||
+		payload.baseScenarioId ||
+		plans.find((plan) => plan.type === "base")?.id ||
+		plans[0]?.id ||
 		"";
 
 	return {
 		profile,
 		activeScenarioId: fallbackScenarioId,
 		snapshotsByScenario: normalizeSnapshots(payload.snapshotsByScenario ?? {}),
-		plans: normalizePlans(payload),
+		plans,
 		hamaScore: calcHamaScoreFromProfile(profile),
 	};
 };
@@ -707,8 +713,18 @@ export const useProfileStore = create<ProfileStoreState>((set, get) => ({
 
 			const payload = (await response.json()) as ServerPayload;
 			const hydrated = hydrateFromServer(payload);
-			// クライアント側で現在選択されているシナリオを優先（テンプレート適用後など、シナリオ選択を保持したい場合）
-			const activeScenarioIdToUse = currentActiveScenarioId || hydrated.activeScenarioId;
+			const activeScenarioIdToUse = resolveActiveScenarioIdFromServer(
+				currentActiveScenarioId,
+				hydrated.plans,
+				hydrated.activeScenarioId,
+			);
+			console.info("[profileStore] hydrate", {
+				currentActiveScenarioId,
+				serverActiveScenarioId: hydrated.activeScenarioId,
+				serverBaseScenarioId: payload.baseScenarioId,
+				resolvedActiveScenarioId: activeScenarioIdToUse,
+				planIds: hydrated.plans.map((plan) => `${plan.type}:${plan.id}`),
+			});
 			const nextProfile = resolveProfileForSelection(
 				hydrated.profile,
 				hydrated.snapshotsByScenario,
@@ -754,6 +770,12 @@ export const useProfileStore = create<ProfileStoreState>((set, get) => ({
 				}
 
 				const currentTimepoint = state.activeTimepoint;
+				const scenarioIdToSave = resolveScenarioIdForPersist(state.activeScenarioId, state.plans);
+				console.info("[profileStore] persist", {
+					requestedActiveScenarioId: state.activeScenarioId,
+					scenarioIdToSave,
+					planIds: state.plans.map((plan) => `${plan.type}:${plan.id}`),
+				});
 
 				set({ isSaving: true, errorMessage: null });
 
@@ -765,7 +787,7 @@ export const useProfileStore = create<ProfileStoreState>((set, get) => ({
 						},
 						body: JSON.stringify({
 							profile: state.profile,
-							scenarioId: state.activeScenarioId,
+							scenarioId: scenarioIdToSave,
 							timepoint: currentTimepoint,
 						}),
 					});

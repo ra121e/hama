@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
 const DEFAULT_PROFILE_NAME = "マイプラン";
@@ -28,13 +29,15 @@ const ensureProfile = async () => {
 };
 
 const ensureBaseScenario = async (profileId: string) => {
+	const where = {
+		profileId_type: {
+			profileId,
+			type: "base",
+		},
+  } as unknown as Prisma.ScenarioWhereUniqueInput;
+
   return prisma.scenario.upsert({
-    where: {
-      profileId_type: {
-        profileId,
-        type: "base",
-      },
-    },
+    where,
     update: {},
     create: {
       profileId,

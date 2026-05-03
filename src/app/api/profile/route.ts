@@ -129,13 +129,15 @@ const buildSnapshotCreateInput = (
 };
 
 const ensureBaseScenario = async (tx: Prisma.TransactionClient, profileId: string) => {
-  return tx.scenario.upsert({
-    where: {
-      profileId_type: {
-        profileId,
-        type: BASE_SCENARIO_TYPE,
-      },
+  const where = {
+    profileId_type: {
+      profileId,
+      type: BASE_SCENARIO_TYPE,
     },
+  } as unknown as Prisma.ScenarioWhereUniqueInput;
+
+  return tx.scenario.upsert({
+    where,
     create: {
       profileId,
       type: BASE_SCENARIO_TYPE,
@@ -153,6 +155,9 @@ const ensureBaseScenario = async (tx: Prisma.TransactionClient, profileId: strin
     update: {},
   });
 };
+
+const getBaseScenarioId = (scenarios: Array<{ id: string; type: string }>) =>
+	scenarios.find((scenario) => scenario.type === BASE_SCENARIO_TYPE)?.id ?? "";
 
 const ensureDefaultProfileBundle = async () => {
   if (!profileBootstrapPromise) {
@@ -321,6 +326,7 @@ const fetchProfileBundle = async (preferredScenarioId?: string) => {
       : undefined) ??
     profile.scenarios.find((scenario) => scenario.isDefault) ??
     profile.scenarios[0];
+  const baseScenarioId = getBaseScenarioId(profile.scenarios);
 
   const derived = deriveInputValues(activeScenario?.snapshots ?? []);
 
@@ -345,6 +351,7 @@ const fetchProfileBundle = async (preferredScenarioId?: string) => {
       },
     },
     activeScenarioId: activeScenario?.id ?? "",
+    baseScenarioId,
     snapshotsByScenario: groupSnapshotsByScenario(profile.scenarios),
     scenarios: profile.scenarios.map((scenario) => ({
       id: scenario.id,
@@ -466,6 +473,13 @@ const saveProfile = async (request: Request) => {
         ...snapshot,
         scenarioId: scenario.id,
       })),
+    });
+
+    console.info("[api/profile] saved", {
+      profileId: profile.id,
+      scenarioId: scenario.id,
+      scenarioType: scenario.type,
+      requestedScenarioId: normalizedScenarioId ?? null,
     });
 
     return scenario.id;
