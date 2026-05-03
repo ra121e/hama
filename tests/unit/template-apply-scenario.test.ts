@@ -6,7 +6,7 @@ import { buildRowTree } from "../../src/features/financial-detail/lib/buildRowTr
 
 /**
  * テンプレート適用後のシナリオ全体をテスト
- * 
+ *
  * テンプレート適用 → データ再読込 → スプレッドシート再マウント
  * という流れで、値が正しく表示されるか確認
  */
