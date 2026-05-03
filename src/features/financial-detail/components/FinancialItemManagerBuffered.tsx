@@ -123,8 +123,6 @@ export function FinancialItemManagerBuffered({ onApplyComplete, onClose, isOpen 
 
 	const closeDialog = () => {
 		if (isSubmitting) return;
-		// キャンセルはローカルバッファを破棄してスナップショットに戻す
-		setLocalItems(originalItemsRef.current);
 		setDialogState(null);
 		setActionError(null);
 	};
