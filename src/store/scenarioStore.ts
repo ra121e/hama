@@ -54,8 +54,8 @@ export const useScenarioStore = create<ScenarioStoreState>((set, get) => ({
 
 	removeScenario: (scenarioId) => {
 		set((state) => {
-			const baseScenario = state.scenarios.find((scenario) => scenario.id === "base");
-			if (scenarioId === "base" || !baseScenario) {
+			const baseScenario = state.scenarios.find((scenario) => scenario.type === "base");
+			if (baseScenario?.id === scenarioId || !baseScenario) {
 				return state;
 			}
 

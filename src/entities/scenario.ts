@@ -41,6 +41,5 @@ export const createScenario = (
 
 export const createBaseScenario = (): Scenario =>
   createScenario("ベースケース", "base", {
-    id: "base",
     isDefault: true,
   });

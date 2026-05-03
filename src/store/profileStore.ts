@@ -272,9 +272,17 @@ const hydrateFromServer = (payload: ServerPayload): {
 		},
 	};
 
+	const fallbackScenarioId =
+		payload.activeScenarioId ||
+		payload.scenarios?.find((plan) => plan.type === "base")?.id ||
+		payload.plans?.find((plan) => plan.type === "base")?.id ||
+		payload.scenarios?.[0]?.id ||
+		payload.plans?.[0]?.id ||
+		"";
+
 	return {
 		profile,
-		activeScenarioId: payload.activeScenarioId || "base",
+		activeScenarioId: fallbackScenarioId,
 		snapshotsByScenario: normalizeSnapshots(payload.snapshotsByScenario ?? {}),
 		plans: normalizePlans(payload),
 		hamaScore: calcHamaScoreFromProfile(profile),
@@ -282,6 +290,17 @@ const hydrateFromServer = (payload: ServerPayload): {
 };
 
 const initialProfile = createInitialProfile();
+const createLocalBasePlan = (): PlanSummary => ({
+	id:
+		typeof crypto !== "undefined" && "randomUUID" in crypto
+			? crypto.randomUUID()
+			: `local-base-${Date.now()}`,
+	name: "ベースプラン",
+	type: "base",
+	isDefault: true,
+	createdAt: new Date().toISOString(),
+});
+const initialBasePlan = createLocalBasePlan();
 
 let persistInFlight = false;
 let persistRequestedWhileInFlight = false;
@@ -309,10 +328,10 @@ const readApiErrorMessage = async (response: Response, fallback: string) => {
 
 export const useProfileStore = create<ProfileStoreState>((set, get) => ({
 	profile: initialProfile,
-	hamaScore: calcHamaScoreForState(initialProfile, {}, "base", "now"),
-	activeScenarioId: "base",
+	hamaScore: calcHamaScoreForState(initialProfile, {}, initialBasePlan.id, "now"),
+	activeScenarioId: initialBasePlan.id,
 	activeTimepoint: "now",
-	plans: [{ id: "base", name: "ベースプラン", type: "base", isDefault: true, createdAt: new Date().toISOString() }],
+	plans: [initialBasePlan],
 	snapshotsByScenario: {},
 	financialDataByScenario: {},
 	isHydrated: false,
@@ -797,14 +816,15 @@ export const useProfileStore = create<ProfileStoreState>((set, get) => ({
 
 	resetProfile: () => {
 		const nextProfile = createInitialProfile();
+		const basePlan = createLocalBasePlan();
 
 		set({
 			profile: nextProfile,
 			financialDataByScenario: {},
-			hamaScore: calcHamaScoreForState(nextProfile, {}, "base", "now"),
-			activeScenarioId: "base",
+			hamaScore: calcHamaScoreForState(nextProfile, {}, basePlan.id, "now"),
+			activeScenarioId: basePlan.id,
 			activeTimepoint: "now",
-			plans: [{ id: "base", name: "ベースプラン", type: "base", isDefault: true, createdAt: new Date().toISOString() }],
+			plans: [basePlan],
 			snapshotsByScenario: {},
 			isHydrated: false,
 			isLoading: false,

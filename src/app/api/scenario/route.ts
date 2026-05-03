@@ -1,6 +1,10 @@
 import { prisma } from "@/lib/prisma";
 
 const DEFAULT_PROFILE_NAME = "マイプラン";
+const createCustomScenarioType = () =>
+  typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? `custom:${crypto.randomUUID()}`
+    : `custom:${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
 const ensureProfile = async () => {
   const existing = await prisma.profile.findFirst({ orderBy: { createdAt: "asc" } });
@@ -25,15 +29,14 @@ const ensureProfile = async () => {
 
 const ensureBaseScenario = async (profileId: string) => {
   return prisma.scenario.upsert({
-    where: { id: "base" },
-    update: {
-      profileId,
-      name: "ベースケース",
-      type: "base",
-      isDefault: true,
+    where: {
+      profileId_type: {
+        profileId,
+        type: "base",
+      },
     },
+    update: {},
     create: {
-      id: "base",
       profileId,
       name: "ベースケース",
       type: "base",
@@ -95,7 +98,10 @@ export async function POST(request: Request) {
       data: {
         profileId: profile.id,
         name: body.name ?? "新規シナリオ",
-        type: body.type ?? "custom",
+        type:
+          body.type && body.type !== "base" && body.type !== "custom"
+            ? body.type
+            : createCustomScenarioType(),
         isDefault: body.isDefault ?? false,
       },
     });

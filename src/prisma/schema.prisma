@@ -29,6 +29,8 @@ model Scenario {
   profileId String
   snapshots Snapshot[]
   financialEntries FinancialEntry[]
+
+  @@unique([profileId, type])
 }
 
 model Snapshot {

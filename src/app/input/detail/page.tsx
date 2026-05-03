@@ -9,7 +9,7 @@ import { FinancialSpreadsheet } from "@/features/financial-detail/components/Fin
 import { useProfileStore } from "@/store/profileStore";
 
 export default function DetailInputPage() {
-  const activeScenarioId = useProfileStore((state) => state.activeScenarioId || "base");
+  const activeScenarioId = useProfileStore((state) => state.activeScenarioId);
   const plans = useProfileStore((state) => state.plans);
   const activePlan = plans.find((p) => p.id === activeScenarioId);
   const { toast } = useToast();

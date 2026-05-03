@@ -46,8 +46,10 @@ type DetailTemplateSelectorProps = {
 
 export function DetailTemplateSelector({ onApplyComplete, compact = false }: DetailTemplateSelectorProps) {
 	const profile = useProfileStore((state) => state.profile);
-	const activeScenarioId = useProfileStore((state) => state.activeScenarioId || "base");
-	const isBaseCase = activeScenarioId === "base";
+	const activeScenarioId = useProfileStore((state) => state.activeScenarioId);
+	const plans = useProfileStore((state) => state.plans);
+	const activePlan = plans.find((plan) => plan.id === activeScenarioId);
+	const isBaseCase = activePlan?.type === "base";
 	const [templates, setTemplates] = useState<LifecycleTemplate[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
 	const [loadError, setLoadError] = useState<string | null>(null);

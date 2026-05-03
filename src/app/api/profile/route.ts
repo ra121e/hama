@@ -2,8 +2,12 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
 const DEFAULT_PROFILE_NAME = "マイプラン";
-const DEFAULT_SCENARIO_ID = "base";
 const DEFAULT_SCENARIO_NAME = "ベースケース";
+const BASE_SCENARIO_TYPE = "base";
+const createCustomScenarioType = () =>
+  typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? `custom:${crypto.randomUUID()}`
+    : `custom:${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
 type Timepoint = "now" | "5y" | "10y" | "20y";
 
@@ -67,7 +71,6 @@ const DEFAULT_SETTINGS = {
 let profileBootstrapPromise: Promise<void> | null = null;
 
 const buildSnapshotCreateInput = (
-  scenarioId: string,
   financial: FinancialData,
   happiness: HappinessData,
   happinessMemo: HappinessMemoMap,
@@ -125,19 +128,21 @@ const buildSnapshotCreateInput = (
   return snapshots;
 };
 
-const createBaseScenarioIfMissing = async (tx: Prisma.TransactionClient, profileId: string) => {
-  await tx.scenario.upsert({
-    where: { id: DEFAULT_SCENARIO_ID },
-    update: {},
+const ensureBaseScenario = async (tx: Prisma.TransactionClient, profileId: string) => {
+  return tx.scenario.upsert({
+    where: {
+      profileId_type: {
+        profileId,
+        type: BASE_SCENARIO_TYPE,
+      },
+    },
     create: {
-      id: DEFAULT_SCENARIO_ID,
       profileId,
+      type: BASE_SCENARIO_TYPE,
       name: DEFAULT_SCENARIO_NAME,
-      type: "base",
       isDefault: true,
       snapshots: {
         create: buildSnapshotCreateInput(
-          DEFAULT_SCENARIO_ID,
           DEFAULT_FINANCIAL,
           DEFAULT_HAPPINESS,
           {},
@@ -145,48 +150,34 @@ const createBaseScenarioIfMissing = async (tx: Prisma.TransactionClient, profile
         ),
       },
     },
+    update: {},
   });
 };
 
 const ensureDefaultProfileBundle = async () => {
   if (!profileBootstrapPromise) {
     profileBootstrapPromise = (async () => {
-      const profile = await prisma.profile.findFirst({
-        orderBy: { createdAt: "asc" },
-        include: {
-          settings: true,
-          scenarios: {
-            orderBy: { createdAt: "asc" },
-            include: {
-              snapshots: true,
-            },
-          },
-        },
-      });
+      await prisma.$transaction(async (tx) => {
+        const profile = await tx.profile.findFirst({
+          orderBy: { createdAt: "asc" },
+          select: { id: true },
+        });
 
-      if (!profile) {
-        await prisma.$transaction(async (tx) => {
-          const createdProfile = await tx.profile.create({
-            data: {
-              name: DEFAULT_PROFILE_NAME,
-              currency: "JPY",
-              settings: {
-                create: DEFAULT_SETTINGS,
+        const ensuredProfile = profile
+          ? profile
+          : await tx.profile.create({
+              data: {
+                name: DEFAULT_PROFILE_NAME,
+                currency: "JPY",
+                settings: {
+                  create: DEFAULT_SETTINGS,
+                },
               },
-            },
-          });
+              select: { id: true },
+            });
 
-          await createBaseScenarioIfMissing(tx, createdProfile.id);
-        });
-
-        return;
-      }
-
-      if (profile.scenarios.length === 0) {
-        await prisma.$transaction(async (tx) => {
-          await createBaseScenarioIfMissing(tx, profile.id);
-        });
-      }
+        await ensureBaseScenario(tx, ensuredProfile.id);
+      });
     })().finally(() => {
       profileBootstrapPromise = null;
     });
@@ -353,7 +344,7 @@ const fetchProfileBundle = async (preferredScenarioId?: string) => {
         currency: "JPY",
       },
     },
-    activeScenarioId: activeScenario?.id ?? DEFAULT_SCENARIO_ID,
+    activeScenarioId: activeScenario?.id ?? "",
     snapshotsByScenario: groupSnapshotsByScenario(profile.scenarios),
     scenarios: profile.scenarios.map((scenario) => ({
       id: scenario.id,
@@ -375,12 +366,12 @@ const saveProfile = async (request: Request) => {
     );
   }
 
-  const scenarioId = body.scenarioId ?? DEFAULT_SCENARIO_ID;
+  const normalizedScenarioId = body.scenarioId?.trim();
   const scenarioName = body.scenarioName?.trim();
   const scenarioType = body.scenarioType;
   const timepoint = body.timepoint ?? "now";
 
-  await prisma.$transaction(async (tx) => {
+  const persistedScenarioId = await prisma.$transaction(async (tx) => {
     const profileFromDb = body.profile.id
       ? await tx.profile.findUnique({ where: { id: body.profile.id } })
       : await tx.profile.findFirst({ orderBy: { createdAt: "asc" } });
@@ -421,29 +412,42 @@ const saveProfile = async (request: Request) => {
       },
     });
 
-    const existingScenario = await tx.scenario.findUnique({ where: { id: scenarioId } });
+    const baseScenario = await ensureBaseScenario(tx, profile.id);
 
-    const scenario = existingScenario
-      ? await tx.scenario.update({
-          where: { id: scenarioId },
-          data: {
-            profileId: profile.id,
-            ...(scenarioName ? { name: scenarioName } : {}),
-            ...(scenarioType ? { type: scenarioType } : {}),
-          },
-        })
-      : scenarioId === DEFAULT_SCENARIO_ID
-        ? (await createBaseScenarioIfMissing(tx, profile.id),
-          await tx.scenario.findUniqueOrThrow({ where: { id: DEFAULT_SCENARIO_ID } }))
-        : await tx.scenario.create({
-            data: {
-              id: scenarioId,
+    const scenario = normalizedScenarioId && normalizedScenarioId !== "base"
+      ? await (async () => {
+          const existingScenario = await tx.scenario.findFirst({
+            where: {
+              id: normalizedScenarioId,
               profileId: profile.id,
-              name: scenarioName ?? DEFAULT_SCENARIO_NAME,
-              type: scenarioType ?? "custom",
+            },
+          });
+
+          if (existingScenario) {
+            return tx.scenario.update({
+              where: { id: existingScenario.id },
+              data: {
+                ...(scenarioName ? { name: scenarioName } : {}),
+                ...(scenarioType && scenarioType !== BASE_SCENARIO_TYPE && scenarioType !== "custom"
+                  ? { type: scenarioType }
+                  : {}),
+              },
+            });
+          }
+
+          return tx.scenario.create({
+            data: {
+              profileId: profile.id,
+              name: scenarioName ?? "新規シナリオ",
+              type:
+                scenarioType && scenarioType !== BASE_SCENARIO_TYPE && scenarioType !== "custom"
+                  ? scenarioType
+                  : createCustomScenarioType(),
               isDefault: false,
             },
           });
+        })()
+      : baseScenario;
 
     await tx.snapshot.deleteMany({
       where: {
@@ -454,7 +458,6 @@ const saveProfile = async (request: Request) => {
 
     await tx.snapshot.createMany({
       data: buildSnapshotCreateInput(
-        scenario.id,
         body.profile.financial,
         body.profile.happiness,
         body.profile.happinessMemo ?? {},
@@ -464,9 +467,11 @@ const saveProfile = async (request: Request) => {
         scenarioId: scenario.id,
       })),
     });
+
+    return scenario.id;
   });
 
-  return Response.json(await fetchProfileBundle(scenarioId));
+  return Response.json(await fetchProfileBundle(persistedScenarioId));
 };
 
 export async function GET() {

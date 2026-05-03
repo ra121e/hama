@@ -66,8 +66,23 @@ export async function POST(request: Request) {
 			);
 		}
 
+		const scenario = await prisma.scenario.findFirst({
+			where: {
+				id: scenarioId,
+				profileId,
+			},
+			select: {
+				id: true,
+				type: true,
+			},
+		});
+
+		if (!scenario) {
+			return Response.json({ message: "Scenario not found" }, { status: 404 });
+		}
+
 		// ベースケース（デフォルトプラン）にはテンプレートを適用しない
-		if (scenarioId === "base") {
+		if (scenario.type === "base") {
 			return Response.json({ message: "ベースケースにはテンプレートを適用できません" }, { status: 400 });
 		}
 

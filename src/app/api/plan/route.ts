@@ -1,7 +1,11 @@
 import { prisma } from "@/lib/prisma";
 
 const MAX_ADDITIONAL_PLANS = 5;
-const BASE_PLAN_ID = "base";
+const BASE_PLAN_TYPE = "base";
+const createCustomPlanType = () =>
+  typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? `custom:${crypto.randomUUID()}`
+    : `custom:${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
 type CreatePlanRequest = {
   name: string;
@@ -58,7 +62,7 @@ export async function GET() {
 
     return Response.json({
       plans: profile.scenarios.map(toPlanSummary),
-      activePlanId: activePlan?.id ?? BASE_PLAN_ID,
+      activePlanId: activePlan?.id ?? "",
     });
   } catch (error) {
     return Response.json(
@@ -85,25 +89,19 @@ export async function POST(request: Request) {
 
     const sourcePlan =
       profile.scenarios.find((item) => item.id === body.sourcePlanId) ??
-      profile.scenarios.find((item) => item.id === BASE_PLAN_ID) ??
+      profile.scenarios.find((item) => item.type === BASE_PLAN_TYPE) ??
       profile.scenarios[0];
 
     if (!sourcePlan) {
       return Response.json({ message: "Source plan not found" }, { status: 404 });
     }
 
-    const nextPlanId =
-      typeof crypto !== "undefined" && "randomUUID" in crypto
-        ? crypto.randomUUID()
-        : `plan-${Date.now()}`;
-
-    await prisma.$transaction(async (tx) => {
-      await tx.scenario.create({
+    const nextPlanId = await prisma.$transaction(async (tx) => {
+      const createdScenario = await tx.scenario.create({
         data: {
-          id: nextPlanId,
           profileId: profile.id,
           name: body.name.trim(),
-          type: "custom",
+          type: createCustomPlanType(),
           isDefault: false,
         },
       });
@@ -111,7 +109,7 @@ export async function POST(request: Request) {
       if (sourcePlan.snapshots.length > 0) {
         await tx.snapshot.createMany({
           data: sourcePlan.snapshots.map((snapshot) => ({
-            scenarioId: nextPlanId,
+            scenarioId: createdScenario.id,
             timepoint: snapshot.timepoint,
             categoryId: snapshot.categoryId,
             itemId: snapshot.itemId,
@@ -120,6 +118,8 @@ export async function POST(request: Request) {
           })),
         });
       }
+
+      return createdScenario.id;
     });
 
     const refreshed = await getProfileWithScenarios();
@@ -161,7 +161,7 @@ export async function PATCH(request: Request) {
 
     return Response.json({
       plans: refreshed.scenarios.map(toPlanSummary),
-      activePlanId: activePlan?.id ?? BASE_PLAN_ID,
+      activePlanId: activePlan?.id ?? "",
     });
   } catch (error) {
     return Response.json(
@@ -179,15 +179,15 @@ export async function DELETE(request: Request) {
       return Response.json({ message: "planId is required" }, { status: 400 });
     }
 
-    if (body.planId === BASE_PLAN_ID) {
-      return Response.json({ message: "Base plan cannot be deleted" }, { status: 400 });
-    }
-
     const profile = await getProfileWithScenarios();
     const target = profile.scenarios.find((item) => item.id === body.planId);
 
     if (!target) {
       return Response.json({ message: "Plan not found" }, { status: 404 });
+    }
+
+    if (target.type === BASE_PLAN_TYPE) {
+      return Response.json({ message: "Base plan cannot be deleted" }, { status: 400 });
     }
 
     await prisma.scenario.delete({ where: { id: target.id } });
@@ -197,7 +197,7 @@ export async function DELETE(request: Request) {
 
     return Response.json({
       plans: refreshed.scenarios.map(toPlanSummary),
-      activePlanId: activePlan?.id ?? BASE_PLAN_ID,
+      activePlanId: activePlan?.id ?? "",
     });
   } catch (error) {
     return Response.json(

@@ -38,6 +38,8 @@ model Scenario {
   snapshots Snapshot[]
   financialItems FinancialItem[]
   financialEntries FinancialEntry[]
+
+  @@unique([profileId, type])
 }
 
 // スナップショット（シナリオ × 時点 × 項目の値）
