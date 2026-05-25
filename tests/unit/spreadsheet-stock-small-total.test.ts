@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { FinancialEntry } from "../../src/entities/financial-item";
-import { calculateSpreadsheetColumnValue } from "../../src/features/financial-detail/lib/spreadsheet";
+import { calculateSpreadsheetColumnValue, generateSpreadsheetColumns } from "../../src/features/financial-detail/lib/spreadsheet";
 
 describe("spreadsheet stock small totals", () => {
   it("returns latest balance for stock monthly block totals and sum for flow", () => {
@@ -17,5 +17,35 @@ describe("spreadsheet stock small totals", () => {
 
     // flow: should return sum (600)
     expect(calculateSpreadsheetColumnValue(entries, column, false)).toBe(600);
+  });
+
+  it("does not fall back before the grand-total period for stock items", () => {
+    const columns = generateSpreadsheetColumns(new Date(2026, 3, 1));
+    const grandTotalColumn = columns.at(-1);
+    const previousColumn = columns.at(-2);
+
+    expect(grandTotalColumn?.id).toBe("total");
+    expect(grandTotalColumn?.periodMonths).toEqual(previousColumn?.periodMonths);
+
+    if (!grandTotalColumn || !previousColumn) {
+      throw new Error("Expected generated columns");
+    }
+
+    const previousPeriodLastMonth = previousColumn.periodMonths.at(-1);
+    if (!previousPeriodLastMonth) {
+      throw new Error("Expected previous period months");
+    }
+
+    const oldEntries = new Map<string, FinancialEntry>([
+      ["2026-04", { id: "old", scenarioId: "s", itemId: "i", yearMonth: "2026-04", value: 100, isExpanded: false, memo: null }],
+    ]);
+
+    expect(calculateSpreadsheetColumnValue(oldEntries, grandTotalColumn, true)).toBeNull();
+
+    const currentPeriodEntries = new Map<string, FinancialEntry>([
+      [previousPeriodLastMonth, { id: "latest", scenarioId: "s", itemId: "i", yearMonth: previousPeriodLastMonth, value: 900, isExpanded: false, memo: null }],
+    ]);
+
+    expect(calculateSpreadsheetColumnValue(currentPeriodEntries, grandTotalColumn, true)).toBe(900);
   });
 });

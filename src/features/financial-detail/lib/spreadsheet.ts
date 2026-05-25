@@ -85,7 +85,8 @@ export const generateSpreadsheetColumns = (baseDate = new Date()): SpreadsheetCo
 		});
 	}
 
-	columns.push(createTotalColumn("total", [], "総合計"));
+	const grandTotalPeriodMonths = columns[columns.length - 1]?.periodMonths ?? [];
+	columns.push(createTotalColumn("total", grandTotalPeriodMonths, "総合計"));
 
 	return columns;
 };
@@ -120,6 +121,10 @@ export const calculateSpreadsheetColumnValue = (
 	};
 
 	if (column.id === "total") {
+		if (isStockCategory) {
+			return getLatestPeriodValue();
+		}
+
 		let total = 0;
 		entries.forEach((entry) => {
 			total += entry.value;
@@ -128,6 +133,10 @@ export const calculateSpreadsheetColumnValue = (
 	}
 
 	if (column.type === "total") {
+		if (isStockCategory) {
+			return getLatestPeriodValue();
+		}
+
 		const period = sumPeriodValues();
 		return period.hasAnyData ? period.sum : null;
 	}
