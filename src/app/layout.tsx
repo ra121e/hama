@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist_Mono, Noto_Sans_JP } from "next/font/google";
 import { Toaster } from "@/components/ui/toaster";
 import { Navbar } from "@/shared/components/Navbar";
+import { RouteLoadingIndicator } from "@/shared/components/RouteLoadingIndicator";
 import { ThemeProvider } from "@/shared/components/ThemeProvider";
 import "./globals.css";
 
@@ -39,6 +40,7 @@ export default function RootLayout({
         >
           <div className="min-h-screen bg-background text-foreground">
             <Navbar />
+            <RouteLoadingIndicator />
             {children}
             <Toaster />
           </div>
