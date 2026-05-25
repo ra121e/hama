@@ -4,10 +4,6 @@ import { prisma } from "@/lib/prisma";
 const DEFAULT_PROFILE_NAME = "マイプラン";
 const DEFAULT_SCENARIO_NAME = "ベースケース";
 const BASE_SCENARIO_TYPE = "base";
-const createCustomScenarioType = () =>
-  typeof crypto !== "undefined" && "randomUUID" in crypto
-    ? `custom:${crypto.randomUUID()}`
-    : `custom:${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
 type Timepoint = "now" | "5y" | "10y" | "20y";
 
@@ -47,6 +43,13 @@ type SaveProfileRequest = {
   scenarioType?: string;
   timepoint?: Timepoint;
 };
+
+class UnknownScenarioError extends Error {
+  constructor(scenarioId: string) {
+    super(`Selected scenario does not exist: ${scenarioId}`);
+    this.name = "UnknownScenarioError";
+  }
+}
 
 const DEFAULT_FINANCIAL: FinancialData = {
   fin_assets: 0,
@@ -442,17 +445,7 @@ const saveProfile = async (request: Request) => {
             });
           }
 
-          return tx.scenario.create({
-            data: {
-              profileId: profile.id,
-              name: scenarioName ?? "新規シナリオ",
-              type:
-                scenarioType && scenarioType !== BASE_SCENARIO_TYPE && scenarioType !== "custom"
-                  ? scenarioType
-                  : createCustomScenarioType(),
-              isDefault: false,
-            },
-          });
+          throw new UnknownScenarioError(normalizedScenarioId);
         })()
       : baseScenario;
 
@@ -504,6 +497,13 @@ export async function POST(request: Request) {
   try {
     return await saveProfile(request);
   } catch (error) {
+    if (error instanceof UnknownScenarioError) {
+      return Response.json(
+        { message: "Selected scenario was not found. Please reload the page before saving." },
+        { status: 409 },
+      );
+    }
+
     console.error("POST /api/profile failed", error);
     return Response.json(
       { message: "Failed to save profile", error: String(error) },
@@ -516,6 +516,13 @@ export async function PUT(request: Request) {
   try {
     return await saveProfile(request);
   } catch (error) {
+    if (error instanceof UnknownScenarioError) {
+      return Response.json(
+        { message: "Selected scenario was not found. Please reload the page before saving." },
+        { status: 409 },
+      );
+    }
+
     console.error("PUT /api/profile failed", error);
     return Response.json(
       { message: "Failed to save profile", error: String(error) },

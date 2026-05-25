@@ -19,4 +19,13 @@ describe("detail input page", () => {
 		expect(source).toContain("activeScenarioId");
 		expect(source).not.toContain("useScenarioStore");
 	});
+
+	it("loads the server profile before mounting detail controls", () => {
+		const source = readFileSync(join(process.cwd(), "src", "app", "input", "detail", "page.tsx"), "utf8");
+
+		expect(source).toContain("void loadProfileFromDb();");
+		expect(source).toContain("isHydrated ? (");
+		expect(source.indexOf("isHydrated ? (")).toBeLessThan(source.indexOf("<FinancialSpreadsheet"));
+		expect(source.indexOf("isHydrated ? (")).toBeLessThan(source.indexOf("<FinancialItemManagerDialog"));
+	});
 });

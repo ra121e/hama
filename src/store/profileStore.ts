@@ -746,7 +746,7 @@ export const useProfileStore = create<ProfileStoreState>((set, get) => ({
 		} catch (error) {
 			set({
 				isLoading: false,
-				isHydrated: true,
+				isHydrated: false,
 				errorMessage: error instanceof Error ? error.message : "Failed to load profile",
 			});
 		}
@@ -769,8 +769,23 @@ export const useProfileStore = create<ProfileStoreState>((set, get) => ({
 					continue;
 				}
 
+				if (!state.profile.id) {
+					set({
+						isSaving: false,
+						errorMessage: "DBのプロフィール読み込みが完了していないため保存できません",
+					});
+					continue;
+				}
+
 				const currentTimepoint = state.activeTimepoint;
 				const scenarioIdToSave = resolveScenarioIdForPersist(state.activeScenarioId, state.plans);
+				if (!scenarioIdToSave) {
+					set({
+						isSaving: false,
+						errorMessage: "保存先プランが選択されていません",
+					});
+					continue;
+				}
 				console.info("[profileStore] persist", {
 					requestedActiveScenarioId: state.activeScenarioId,
 					scenarioIdToSave,
