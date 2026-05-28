@@ -1,8 +1,8 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
-const DEFAULT_PROFILE_NAME = "マイプラン";
-const DEFAULT_SCENARIO_NAME = "ベースケース";
+const DEFAULT_PROFILE_NAME = "マイシナリオ";
+const DEFAULT_SCENARIO_NAME = "ベースシナリオ";
 const BASE_SCENARIO_TYPE = "base";
 
 type Timepoint = "now" | "5y" | "10y" | "20y";

@@ -37,7 +37,7 @@ export function PlanSwitcher({ className }: PlanSwitcherProps) {
   const handleCreate = async () => {
     const parsed = validatePlanName(newPlanName);
     if (!parsed.success) {
-      setNewPlanError(parsed.error.issues[0]?.message ?? "プラン名を確認してください");
+      setNewPlanError(parsed.error.issues[0]?.message ?? "シナリオ名を確認してください");
       return;
     }
 
@@ -52,14 +52,14 @@ export function PlanSwitcher({ className }: PlanSwitcherProps) {
       return;
     }
 
-    const nextName = window.prompt("新しいプラン名", target.name);
+    const nextName = window.prompt("新しいシナリオ名", target.name);
     if (nextName === null) {
       return;
     }
 
     const parsed = validatePlanName(nextName);
     if (!parsed.success) {
-      window.alert(parsed.error.issues[0]?.message ?? "プラン名を確認してください");
+      window.alert(parsed.error.issues[0]?.message ?? "シナリオ名を確認してください");
       return;
     }
 
@@ -72,7 +72,7 @@ export function PlanSwitcher({ className }: PlanSwitcherProps) {
       return;
     }
 
-    const accepted = window.confirm(`プラン「${target.name}」を削除しますか？`);
+    const accepted = window.confirm(`シナリオ「${target.name}」を削除しますか？`);
     if (!accepted) {
       return;
     }
@@ -83,14 +83,14 @@ export function PlanSwitcher({ className }: PlanSwitcherProps) {
   return (
     <section className={cn("space-y-3 rounded-xl border border-border bg-card/70 p-4", className)}>
       <div className="space-y-1">
-        <h2 className="text-sm font-semibold">プラン管理</h2>
+        <h2 className="text-sm font-semibold">シナリオ管理</h2>
         <p className="text-xs text-muted-foreground">
-          現在プラン: {activePlan?.name ?? "未選択"} / 追加プラン数: {additionalPlanCount}/5
+          現在シナリオ: {activePlan?.name ?? "未選択"} / 追加シナリオ数: {additionalPlanCount}/5
         </p>
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="new-plan-name">新規プラン名</Label>
+        <Label htmlFor="new-plan-name">新規シナリオ名</Label>
         <div className="flex flex-wrap items-center gap-2">
           <Input
             id="new-plan-name"
@@ -100,11 +100,11 @@ export function PlanSwitcher({ className }: PlanSwitcherProps) {
             className="min-w-[220px] flex-1"
           />
           <Button type="button" onClick={() => void handleCreate()} disabled={!canCreatePlan || isSaving}>
-            新規プラン作成
+            新規シナリオ作成
           </Button>
         </div>
         {!canCreatePlan ? (
-          <p className="text-xs text-amber-600">追加プランは最大5件までです。</p>
+          <p className="text-xs text-amber-600">追加シナリオは最大5件までです。</p>
         ) : null}
         {newPlanError ? <p className="text-xs text-destructive">{newPlanError}</p> : null}
       </div>

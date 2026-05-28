@@ -109,7 +109,7 @@ export function DetailTemplateSelector({ onApplyComplete, compact = false }: Det
  			toast({
  				variant: "destructive",
  				title: "テンプレート適用不可",
- 				description: "ベースケースにはテンプレートを適用できません。カスタムプランを選択してください。",
+	 			description: "ベースシナリオにはテンプレートを適用できません。カスタムシナリオを選択してください。",
  			});
  			return;
  		}
@@ -119,7 +119,7 @@ export function DetailTemplateSelector({ onApplyComplete, compact = false }: Det
 
 	const openConfirm = (template: LifecycleTemplate) => {
 		if (isBaseCase) {
-			setApplyError("ベースケースにはテンプレートを適用できません");
+			setApplyError("ベースシナリオにはテンプレートを適用できません");
 			return;
 		}
 
@@ -222,7 +222,7 @@ export function DetailTemplateSelector({ onApplyComplete, compact = false }: Det
 						<DialogTitle>{selectedTemplate ? "テンプレートを適用しますか？" : "テンプレートを選択"}</DialogTitle>
 						<DialogDescription>
 							{selectedTemplate
-								? "選択すると既存の中項目・小項目と当該プランの全てのエントリは削除され、テンプレートのデータで上書きされます。よろしければ適用してください。"
+								? "選択すると既存の中項目・小項目と当該シナリオの全てのエントリは削除され、テンプレートのデータで上書きされます。よろしければ適用してください。"
 								: "詳細財務入力に必要な項目と月次データだけを、安全に追加します。"}
 						</DialogDescription>
 					</DialogHeader>

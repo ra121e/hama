@@ -1,7 +1,7 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
-const DEFAULT_PROFILE_NAME = "マイプラン";
+const DEFAULT_PROFILE_NAME = "マイシナリオ";
 const createCustomScenarioType = () =>
   typeof crypto !== "undefined" && "randomUUID" in crypto
     ? `custom:${crypto.randomUUID()}`
@@ -41,7 +41,7 @@ const ensureBaseScenario = async (profileId: string) => {
     update: {},
     create: {
       profileId,
-      name: "ベースケース",
+      name: "ベースシナリオ",
       type: "base",
       isDefault: true,
     },

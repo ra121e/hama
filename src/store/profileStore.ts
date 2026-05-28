@@ -301,7 +301,7 @@ const createLocalBasePlan = (): PlanSummary => ({
 		typeof crypto !== "undefined" && "randomUUID" in crypto
 			? crypto.randomUUID()
 			: `local-base-${Date.now()}`,
-	name: "ベースプラン",
+	name: "ベースシナリオ",
 	type: "base",
 	isDefault: true,
 	createdAt: new Date().toISOString(),
@@ -460,7 +460,7 @@ export const useProfileStore = create<ProfileStoreState>((set, get) => ({
 
 			if (!response.ok) {
 				throw new Error(
-					await readApiErrorMessage(response, `Failed to create plan: ${response.status}`),
+					await readApiErrorMessage(response, `Failed to create scenario: ${response.status}`),
 				);
 			}
 
@@ -471,7 +471,7 @@ export const useProfileStore = create<ProfileStoreState>((set, get) => ({
 		} catch (error) {
 			set({
 				isSaving: false,
-				errorMessage: error instanceof Error ? error.message : "Failed to create plan",
+				errorMessage: error instanceof Error ? error.message : "Failed to create scenario",
 			});
 		}
 	},
@@ -490,7 +490,7 @@ export const useProfileStore = create<ProfileStoreState>((set, get) => ({
 
 			if (!response.ok) {
 				throw new Error(
-					await readApiErrorMessage(response, `Failed to rename plan: ${response.status}`),
+					await readApiErrorMessage(response, `Failed to rename scenario: ${response.status}`),
 				);
 			}
 
@@ -499,7 +499,7 @@ export const useProfileStore = create<ProfileStoreState>((set, get) => ({
 		} catch (error) {
 			set({
 				isSaving: false,
-				errorMessage: error instanceof Error ? error.message : "Failed to rename plan",
+				errorMessage: error instanceof Error ? error.message : "Failed to rename scenario",
 			});
 		}
 	},
@@ -518,7 +518,7 @@ export const useProfileStore = create<ProfileStoreState>((set, get) => ({
 
 			if (!response.ok) {
 				throw new Error(
-					await readApiErrorMessage(response, `Failed to delete plan: ${response.status}`),
+					await readApiErrorMessage(response, `Failed to delete scenario: ${response.status}`),
 				);
 			}
 
@@ -529,7 +529,7 @@ export const useProfileStore = create<ProfileStoreState>((set, get) => ({
 		} catch (error) {
 			set({
 				isSaving: false,
-				errorMessage: error instanceof Error ? error.message : "Failed to delete plan",
+				errorMessage: error instanceof Error ? error.message : "Failed to delete scenario",
 			});
 		}
 	},
@@ -782,7 +782,7 @@ export const useProfileStore = create<ProfileStoreState>((set, get) => ({
 				if (!scenarioIdToSave) {
 					set({
 						isSaving: false,
-						errorMessage: "保存先プランが選択されていません",
+						errorMessage: "保存先シナリオが選択されていません",
 					});
 					continue;
 				}

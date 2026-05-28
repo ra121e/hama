@@ -40,6 +40,6 @@ export const createScenario = (
 });
 
 export const createBaseScenario = (): Scenario =>
-  createScenario("ベースケース", "base", {
+  createScenario("ベースシナリオ", "base", {
     isDefault: true,
   });

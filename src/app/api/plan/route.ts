@@ -66,7 +66,7 @@ export async function GET() {
     });
   } catch (error) {
     return Response.json(
-      { message: "Failed to load plans", error: String(error) },
+      { message: "Failed to load scenarios", error: String(error) },
       { status: 500 },
     );
   }
@@ -77,14 +77,14 @@ export async function POST(request: Request) {
     const body = (await request.json()) as CreatePlanRequest;
 
     if (!body?.name?.trim()) {
-      return Response.json({ message: "Plan name is required" }, { status: 400 });
+      return Response.json({ message: "Scenario name is required" }, { status: 400 });
     }
 
     const profile = await getProfileWithScenarios();
     const additionalCount = profile.scenarios.filter((item) => !item.isDefault).length;
 
     if (additionalCount >= MAX_ADDITIONAL_PLANS) {
-      return Response.json({ message: "Additional plan limit exceeded" }, { status: 400 });
+      return Response.json({ message: "Additional scenario limit exceeded" }, { status: 400 });
     }
 
     const sourcePlan =
@@ -93,7 +93,7 @@ export async function POST(request: Request) {
       profile.scenarios[0];
 
     if (!sourcePlan) {
-      return Response.json({ message: "Source plan not found" }, { status: 404 });
+      return Response.json({ message: "Source scenario not found" }, { status: 404 });
     }
 
     const nextPlanId = await prisma.$transaction(async (tx) => {
@@ -131,7 +131,7 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     return Response.json(
-      { message: "Failed to create plan", error: String(error) },
+      { message: "Failed to create scenario", error: String(error) },
       { status: 500 },
     );
   }
@@ -148,7 +148,7 @@ export async function PATCH(request: Request) {
     const profile = await getProfileWithScenarios();
     const target = profile.scenarios.find((item) => item.id === body.planId);
     if (!target) {
-      return Response.json({ message: "Plan not found" }, { status: 404 });
+      return Response.json({ message: "Scenario not found" }, { status: 404 });
     }
 
     await prisma.scenario.update({
@@ -165,7 +165,7 @@ export async function PATCH(request: Request) {
     });
   } catch (error) {
     return Response.json(
-      { message: "Failed to rename plan", error: String(error) },
+      { message: "Failed to rename scenario", error: String(error) },
       { status: 500 },
     );
   }
@@ -183,11 +183,11 @@ export async function DELETE(request: Request) {
     const target = profile.scenarios.find((item) => item.id === body.planId);
 
     if (!target) {
-      return Response.json({ message: "Plan not found" }, { status: 404 });
+      return Response.json({ message: "Scenario not found" }, { status: 404 });
     }
 
     if (target.type === BASE_PLAN_TYPE) {
-      return Response.json({ message: "Base plan cannot be deleted" }, { status: 400 });
+      return Response.json({ message: "Base scenario cannot be deleted" }, { status: 400 });
     }
 
     await prisma.scenario.delete({ where: { id: target.id } });
@@ -201,7 +201,7 @@ export async function DELETE(request: Request) {
     });
   } catch (error) {
     return Response.json(
-      { message: "Failed to delete plan", error: String(error) },
+      { message: "Failed to delete scenario", error: String(error) },
       { status: 500 },
     );
   }

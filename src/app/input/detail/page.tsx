@@ -74,7 +74,7 @@ export default function DetailInputPage() {
           <h1 className="text-3xl font-semibold tracking-tight">詳細財務入力</h1>
           <div className="mt-1">
             <Link href="/scenario" className="text-sm text-primary underline">
-              プラン: {activePlan ? activePlan.name : isHydrated ? "ベースプラン" : "読込中..."}
+              シナリオ: {activePlan ? activePlan.name : isHydrated ? "ベースシナリオ" : "読込中..."}
             </Link>
           </div>
           <p className="max-w-2xl text-sm text-muted-foreground">

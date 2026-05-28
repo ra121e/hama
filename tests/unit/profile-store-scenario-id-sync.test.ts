@@ -6,7 +6,7 @@ import {
 
 describe("profile store scenario id sync", () => {
 	const plans = [
-		{ id: "server-base-id", name: "ベースプラン", type: "base", isDefault: true, createdAt: "2026-05-03T00:00:00.000Z" },
+		{ id: "server-base-id", name: "ベースシナリオ", type: "base", isDefault: true, createdAt: "2026-05-03T00:00:00.000Z" },
 		{ id: "custom-1", name: "カスタム", type: "custom:123", isDefault: false, createdAt: "2026-05-03T00:00:00.000Z" },
 	];
 

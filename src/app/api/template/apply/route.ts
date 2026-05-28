@@ -81,9 +81,9 @@ export async function POST(request: Request) {
 			return Response.json({ message: "Scenario not found" }, { status: 404 });
 		}
 
-		// ベースケース（デフォルトプラン）にはテンプレートを適用しない
+		// ベースシナリオ（デフォルトシナリオ）にはテンプレートを適用しない
 		if (scenario.type === "base") {
-			return Response.json({ message: "ベースケースにはテンプレートを適用できません" }, { status: 400 });
+			return Response.json({ message: "ベースシナリオにはテンプレートを適用できません" }, { status: 400 });
 		}
 
 		if (!template.financialDetail?.items || !template.financialDetail?.entries) {

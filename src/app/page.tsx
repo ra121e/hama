@@ -69,7 +69,7 @@ export default function Home() {
                   ) : null}
                 </CardHeader>
                 <CardContent className="space-y-5">
-                  {/* プラン選択と詳細入力ボタンを横並びで上部に配置 */}
+                  {/* シナリオ選択と詳細入力ボタンを横並びで上部に配置 */}
                   <div className="mb-3 flex items-center justify-between gap-3">
                     <div className="flex items-center">
                       <PlanSelector />
@@ -147,7 +147,7 @@ function PlanSelector() {
 
   return (
     <div className="flex items-center gap-3">
-      <label className="text-sm text-muted-foreground">プラン</label>
+      <label className="text-sm text-muted-foreground">シナリオ</label>
       <select
         value={activePlanId}
         onChange={(e) => setActivePlan(e.target.value)}

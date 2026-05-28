@@ -41,7 +41,7 @@ export function PlanList({
             >
               <p className="truncate text-sm font-medium">{plan.name}</p>
               <p className="text-xs text-muted-foreground">
-                {plan.isDefault ? "ベースプラン（削除不可）" : "追加プラン"}
+                {plan.isDefault ? "ベースシナリオ（削除不可）" : "追加シナリオ"}
               </p>
             </button>
 
