@@ -1,8 +1,8 @@
 # ARCHITECTURE.md — HAMA 技術アーキテクチャ設計書
 
 **製品名**：HAMA（ハマ）— Happy Adviser Money Adviser
-**バージョン**：MVP v1.0 / Phase F 設計含む
-**最終更新**：2026-04-29
+**バージョン**：MVP v1.0 / Phase F〜H 設計含む
+**最終更新**：2026-05-28
 
 ---
 
@@ -10,17 +10,20 @@
 
 | レイヤー | 技術 | 選定理由 |
 |---|---|---|
-| フレームワーク | Next.js 15 (App Router) | SSR/CSR統合・APIルート内蔵・Vercel親和性 |
+| フレームワーク | Next.js 15 (App Router) | SSR/CSR統合・APIルート内蔵 |
 | 言語 | TypeScript 5.x | 型安全・スキーマ駆動開発に必須 |
 | スタイリング | Tailwind CSS v4 + shadcn/ui | 高速UI構築・アクセシブルコンポーネント |
 | グラフ | Apache ECharts 5.x | デュアル軸・複数シリーズ・レーダーを公式サポート |
 | 状態管理 | Zustand | 軽量・シンプル・Next.js App Routerと相性良好 |
 | バリデーション | Zod | スキーマ定義をフロント/バックエンドで共有 |
-| 認証 | **MVP：なし** → フェーズ2：Clerk（個人） → フェーズ3：Clerk Organization（企業） | 段階的に追加。MVPでは認証不要 |
+| 認証 | **Phase G完了まで：なし** → **Phase H：Better-Auth**（自己ホスト型） → フェーズ3：Organization拡張 | SaaS非依存・自己ホスト・Prisma統合容易 |
 | DB | PostgreSQL | マルチユーザー対応・本番環境標準 |
-| ORM | Prisma | 直感的なスキーマ定義・マイグレーション自動化・Copilotとの相性◎ |
-| グリッドUI（Phase F） | ag-Grid または TanStack Table | 仮想スクロール・階層行・大量月次データの表示に対応 |
-| ホスティング | EC2 t4g.small（ARM64）+ RDS PostgreSQL | コスト効率・ARM64 Graviton2で性能/コストバランス良好 |
+| ORM | Prisma | 直感的なスキーマ定義・マイグレーション自動化 |
+| グリッドUI（Phase F） | ag-Grid または TanStack Table | 仮想スクロール・階層行・大量月次データに対応 |
+| ゲートウェイ（Phase G） | **Caddy 2.x** | 自動HTTPS（Let's Encrypt）・シンプルなCaddyfile設定 |
+| CI/CD（Phase G） | **GitHub Actions** | ARM64 buildx・EC2 SSH deploy・PR自動テスト |
+| コードレビュー（Phase G） | **Brook-lint** | skill.md群を知識源としたAIコードレビュー自動化 |
+| ホスティング | EC2 t4g.small（ARM64 / Graviton2） | コスト効率・Graviton2で性能/コストバランス良好 |
 | コンテナ | Docker Compose（ARM64対応） | ローカル開発環境の統一 |
 | テスト | Vitest + Testing Library | 高速・Vite互換・shadcn UIと相性良好 |
 
@@ -28,102 +31,130 @@
 
 ## 2. ディレクトリ構造
 
-Feature Sliced Design（FSD）準拠。ドメイン単位でファイルを配置し、機能追加時の影響範囲を局所化する。
+Feature Sliced Design（FSD）準拠。
 
 ```
 hama/
 ├── docker-compose.yml
+├── docker-compose.prod.yml         # 本番用（Caddy含む）
 ├── Dockerfile
+├── Caddyfile                       # 【Phase G】Caddy設定（HTTPS・リバースプロキシ）
 ├── .env.example
+│
+├── .github/
+│   └── workflows/
+│       ├── ci.yml                  # 【Phase G】CI：lint・typecheck・test（PR時）
+│       ├── cd.yml                  # 【Phase G】CD：Docker build + EC2デプロイ（main push時）
+│       └── review.yml              # 【Phase G】Brook-lint：AIコードレビュー（PR時）
+│
+├── .brook-lint/
+│   ├── config.yml                  # 【Phase G】Brook-lint設定
+│   └── skills/                     # レビュー知識源となるskill.mdファイル群
+│       ├── nextjs.md
+│       ├── prisma.md
+│       ├── typescript.md
+│       └── ...
 │
 ├── prisma/
 │   └── schema.prisma               # DBスキーマ定義
 │
 ├── src/
 │   ├── app/                        # Next.js App Router
-│   │   ├── layout.tsx              # ルートレイアウト（Provider類ラップ）
+│   │   ├── layout.tsx
 │   │   ├── page.tsx                # ダッシュボード（/）ハッピースコア入力のみ
 │   │   ├── input/
-│   │   │   ├── page.tsx            # 財務MVP入力（/input）4時点タブ切替
+│   │   │   ├── page.tsx            # 財務MVP入力（/input）
 │   │   │   └── detail/
-│   │   │       └── page.tsx        # 【Phase F】詳細財務入力（/input/detail）
+│   │   │       └── page.tsx        # 詳細財務入力（/input/detail）Phase F実装済み
 │   │   ├── scenario/
-│   │   │   └── page.tsx            # プラン管理（/scenario）
+│   │   │   └── page.tsx
 │   │   ├── simulation/
-│   │   │   └── page.tsx            # What-Ifシミュレーション（/simulation）
+│   │   │   └── page.tsx
 │   │   ├── report/
-│   │   │   └── page.tsx            # レポート出力（/report）
+│   │   │   └── page.tsx
 │   │   ├── settings/
-│   │   │   └── page.tsx            # 設定画面（/settings）
+│   │   │   └── page.tsx
+│   │   ├── sign-in/
+│   │   │   └── page.tsx            # 【Phase H】サインイン画面
+│   │   ├── sign-up/
+│   │   │   └── page.tsx            # 【Phase H】サインアップ画面
 │   │   └── api/
 │   │       ├── health/
-│   │       │   └── route.ts        # DB疎通確認
+│   │       │   └── route.ts
+│   │       ├── auth/
+│   │       │   └── [...all]/
+│   │       │       └── route.ts    # 【Phase H】Better-Auth ハンドラー
 │   │       ├── profile/
-│   │       │   └── route.ts        # プロファイルCRUD
+│   │       │   └── route.ts
 │   │       ├── scenario/
-│   │       │   └── route.ts        # プランCRUD（DBモデル名はScenario）
+│   │       │   └── route.ts
 │   │       └── financial-entries/
-│   │           └── route.ts        # 【Phase F】FinancialEntry CRUD
+│   │           └── route.ts
 │   │
-│   ├── features/                   # ドメイン別機能モジュール
-│   │   ├── auth/                   # 【フェーズ2で実装】MVP時点は空ディレクトリ
-│   │   │   └── .gitkeep
-│   │   ├── financial/              # MVP財務入力（シンプル版）
-│   │   │   ├── components/         # FinancialInputForm等
-│   │   │   ├── hooks/              # useFinancialForm
-│   │   │   ├── schema.ts           # Zodスキーマ（財務MVP）
+│   ├── features/
+│   │   ├── auth/                   # 【Phase H】Better-Auth クライアント側
+│   │   │   ├── components/         # SignInForm・SignUpForm・UserMenu等
+│   │   │   ├── hooks/              # useSession・useCurrentUser等
+│   │   │   ├── auth.ts             # Better-Auth サーバー設定
+│   │   │   ├── auth-client.ts      # Better-Auth クライアント設定
+│   │   │   └── .gitkeep            # Phase G完了まで空ディレクトリ
+│   │   ├── financial/
+│   │   │   ├── components/
+│   │   │   ├── hooks/
+│   │   │   ├── schema.ts
 │   │   │   └── types.ts
-│   │   ├── financial-detail/       # 【Phase F】詳細財務入力・MVP時点は空
-│   │   │   ├── components/         # SpreadsheetGrid・HierarchyRow等
-│   │   │   ├── hooks/              # useFinancialItems・useAutoCalc
-│   │   │   ├── engine/             # 複利・減価償却・CF自動計算ロジック
-│   │   │   ├── schema.ts           # Zodスキーマ（詳細財務）
-│   │   │   ├── types.ts
-│   │   │   └── .gitkeep
+│   │   ├── financial-detail/       # Phase F実装済み
+│   │   │   ├── components/
+│   │   │   ├── hooks/
+│   │   │   ├── engine/
+│   │   │   ├── schema.ts
+│   │   │   └── types.ts
 │   │   ├── happiness/
-│   │   │   ├── components/         # HappinessSlider等
-│   │   │   ├── hooks/              # useHappinessForm
-│   │   │   ├── schema.ts           # Zodスキーマ（ハッピー）
+│   │   │   ├── components/
+│   │   │   ├── hooks/
+│   │   │   ├── schema.ts
 │   │   │   └── types.ts
-│   │   ├── scenario/               # プラン管理（DBモデル名Scenarioに対応）
+│   │   ├── scenario/
 │   │   │   ├── components/
 │   │   │   ├── hooks/
 │   │   │   └── types.ts
 │   │   └── charts/
-│   │       ├── RadarChart.tsx      # レーダーチャート（ECharts）
-│   │       ├── DualAxisChart.tsx   # デュアル軸ラインチャート（ECharts）
-│   │       └── HamaScore.tsx       # スコアメーター表示
+│   │       ├── RadarChart.tsx
+│   │       ├── DualAxisChart.tsx
+│   │       └── HamaScore.tsx
 │   │
-│   ├── entities/                   # データエンティティ型定義
+│   ├── entities/
 │   │   ├── profile.ts
-│   │   ├── scenario.ts             # Plan型のエイリアスも定義
-│   │   └── financial-item.ts       # 【Phase F】FinancialItem型定義
+│   │   ├── scenario.ts
+│   │   └── financial-item.ts
 │   │
-│   ├── shared/                     # 共有ユーティリティ
-│   │   ├── components/             # shadcn/ui再エクスポート
-│   │   ├── hooks/                  # useDebounce等
+│   ├── shared/
+│   │   ├── components/
+│   │   ├── hooks/
 │   │   ├── lib/
-│   │   │   ├── hama-score.ts           # HAMAスコア計算ロジック
-│   │   │   ├── normalizer.ts           # 財務値の正規化ユーティリティ
-│   │   │   ├── formatter.ts            # 通貨フォーマット（万円表示等）
-│   │   │   └── financial-aggregator.ts # 【Phase F】月次→集約ロジック（表示時動的計算）
+│   │   │   ├── hama-score.ts
+│   │   │   ├── normalizer.ts
+│   │   │   ├── formatter.ts
+│   │   │   └── financial-aggregator.ts
 │   │   └── config/
-│   │       └── categories.ts           # カテゴリ・項目定義（設定駆動）
+│   │       └── categories.ts
 │   │
-│   └── store/                      # Zustand ストア
-│       ├── profileStore.ts         # プロファイル状態
-│       ├── scenarioStore.ts        # プラン一覧・選択状態
-│       └── uiStore.ts              # UI状態（チャート設定等）
+│   └── store/
+│       ├── profileStore.ts
+│       ├── scenarioStore.ts
+│       └── uiStore.ts
+│
+├── middleware.ts                   # 【Phase H】ルート保護（Better-Auth セッション検証）
 │
 ├── tests/
 │   ├── unit/
 │   │   ├── hama-score.test.ts
-│   │   └── financial-aggregator.test.ts  # 【Phase F】集約ロジックのテスト
+│   │   └── financial-aggregator.test.ts
 │   └── integration/
 │       └── api.test.ts
 │
 └── public/
-    └── templates/                  # ライフステージ別サンプルJSON
+    └── templates/
         ├── twenties.json
         ├── thirties.json
         ├── forties.json
@@ -158,7 +189,7 @@ hama/
       │
       └──► DualAxisChart.tsx（財務 左Y軸 / ハッピー各項目・HAMAスコア 右Y軸）
 
-【詳細財務入力ページ（/input/detail）— Phase F】
+【詳細財務入力ページ（/input/detail）— Phase F実装済み】
   スプレッドシート型UI
     ├── 直近36ヶ月：月次入力
     └── 37ヶ月以降：年次入力 → 12ヶ月自動展開
@@ -177,6 +208,13 @@ hama/
     ├── 月次集計  → 詳細グラフ用
     ├── 年次集計  → 推移グラフ用
     └── 4時点集計 → ダッシュボードの DualAxisChart へ反映
+
+【リクエスト処理（Phase G以降）】
+  ブラウザ → Caddy（HTTPS終端・リバースプロキシ）→ Next.js
+              │
+              └── Phase H以降：middleware.ts でセッション検証
+                    認証済み → 通常処理
+                    未認証  → /sign-in へリダイレクト
 ```
 
 ---
@@ -186,14 +224,18 @@ hama/
 ### 認証ロードマップとスキーマ方針
 
 ```
-MVP          認証なし。Profileを直接作成・操作（単一ユーザー想定）
+S01〜F06    認証なし。Profileを直接作成・操作（単一ユーザー想定）
      ↓
-フェーズ2    個人向け認証追加（Clerk）。UserモデルとProfileを紐付け
+Phase G     インフラ整備（認証なしのまま）
      ↓
-フェーズ3    企業向け拡張（Organizationモデル追加）※実装計画外
+Phase H     Better-Auth導入。User/Session/Account テーブル追加。
+            Profile.userId を required に変更
+     ↓
+フェーズ3   Better-Auth Organizationプラグイン。
+            Organization テーブル追加 ※計画外
 ```
 
-`userId` フィールドはMVPでは `nullable` にしておき、フェーズ2移行時に `required` に変更する。
+`userId` フィールドはPhase G完了まで `nullable` にしておき、Phase H移行時に `required` に変更する。
 
 ```prisma
 // prisma/schema.prisma
@@ -208,15 +250,14 @@ generator client {
 }
 
 // ========================================
-// MVP スコープ
+// MVP〜Phase G スコープ（現在の実装範囲）
 // ========================================
 
-// プロファイル（人生計画1件）
 model Profile {
   id        String     @id @default(uuid())
   name      String
   currency  String     @default("JPY")
-  userId    String?    // nullable → フェーズ2で String @unique に変更
+  userId    String?    // nullable → Phase H で String @unique に変更
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
   scenarios Scenario[]
@@ -224,19 +265,17 @@ model Profile {
 }
 
 // プラン（UX上は「名前付きプラン」。DBモデル名は Scenario のまま維持）
-// 例：「現状維持プラン」「転職プラン」「早期リタイアプラン」
 model Scenario {
   id        String     @id @default(uuid())
-  name      String     // ユーザーが自由に命名
-  type      String     // default | custom （楽観/悲観は廃止）
-  isDefault Boolean    @default(false)  // デフォルトプランは削除不可
+  name      String
+  type      String     // default | custom
+  isDefault Boolean    @default(false)
   createdAt DateTime   @default(now())
   profile   Profile    @relation(fields: [profileId], references: [id], onDelete: Cascade)
   profileId String
   snapshots Snapshot[]
 }
 
-// スナップショット（MVP財務・ハッピー入力値を4時点で保存）
 model Snapshot {
   id         String   @id @default(uuid())
   timepoint  String   // now | 5y | 10y | 20y
@@ -248,89 +287,139 @@ model Snapshot {
   scenarioId String
 }
 
-// 設定（プロファイル別）
 model Settings {
   weightHappiness Float   @default(0.7)
   weightFinance   Float   @default(0.3)
   targetAssets    Float?
-  displayUnit     String  @default("man")  // 円 | 万円
+  displayUnit     String  @default("man")
   profile         Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
   profileId       String  @id
 }
 
 // ========================================
-// Phase F以降（詳細財務入力追加時に有効化）
+// Phase F（実装済み）
 // ========================================
 
-// 財務項目定義（階層構造：大項目固定・中小項目はユーザー追加可能）
-// model FinancialItem {
-//   id         String   @id @default(uuid())
-//   profileId  String
-//   profile    Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
-//   level      String   // large | medium | small
-//   parentId   String?  // 親項目ID（大項目はnull）
-//   name       String   // "手取給与" "家賃" など
-//   category   String   // income | expense | asset | liability
-//   autoCalc   String   @default("none")  // none | compound | depreciation | cashflow
-//   rate       Float?   // 年利率・年減価率（autoCalcがnone以外の場合に使用）
-//   sortOrder  Int      @default(0)
-// }
+model FinancialItem {
+  id         String   @id @default(uuid())
+  profileId  String
+  profile    Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  level      String   // large | medium | small
+  parentId   String?
+  name       String
+  category   String   // income | expense | asset | liability
+  autoCalc   String   @default("none")  // none | compound | depreciation | cashflow
+  rate       Float?
+  sortOrder  Int      @default(0)
+}
 
-// 財務エントリ（常に月次単位で保存）
-// 直近36ヶ月：ユーザー入力値をそのまま保存
-// 37ヶ月以降：年次入力を12ヶ月に自動展開して保存
-// model FinancialEntry {
-//   id         String   @id @default(uuid())
-//   scenarioId String
-//   scenario   Scenario @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
-//   itemId     String   // FinancialItem.id
-//   yearMonth  String   // "2026-04" 形式（常に月次単位）
-//   value      Float    // 月次の値（収入・支出は月額、資産・負債は月末残高）
-//   isExpanded Boolean  @default(false)  // 年次入力から自動展開された場合 true
-//   memo       String?
-// }
+model FinancialEntry {
+  id         String   @id @default(uuid())
+  scenarioId String
+  scenario   Scenario @relation(fields: [scenarioId], references: [id], onDelete: Cascade)
+  itemId     String
+  yearMonth  String   // "2026-04" 形式（常に月次単位）
+  value      Float
+  isExpanded Boolean  @default(false)  // 年次入力から自動展開された場合 true
+  memo       String?
+}
 
 // ========================================
-// フェーズ2以降（認証追加時に有効化）
+// Phase H以降（Better-Auth 導入時に有効化）
 // ========================================
-
+// Better-Auth が自動管理するテーブル群（prisma generate で生成）
+//
 // model User {
-//   id        String    @id @default(uuid())
-//   clerkId   String    @unique
-//   email     String    @unique
-//   name      String?
-//   profiles  Profile[]
-//   createdAt DateTime  @default(now())
+//   id            String    @id
+//   name          String
+//   email         String    @unique
+//   emailVerified Boolean
+//   image         String?
+//   createdAt     DateTime
+//   updatedAt     DateTime
+//   sessions      Session[]
+//   accounts      Account[]
+//   profiles      Profile[]  // Profile.userId とのリレーション
+// }
+//
+// model Session {
+//   id        String   @id
+//   expiresAt DateTime
+//   token     String   @unique
+//   ipAddress String?
+//   userAgent String?
+//   userId    String
+//   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+//   createdAt DateTime
+//   updatedAt DateTime
+// }
+//
+// model Account {
+//   id                    String    @id
+//   accountId             String
+//   providerId            String
+//   userId                String
+//   user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+//   accessToken           String?
+//   refreshToken          String?
+//   idToken               String?
+//   accessTokenExpiresAt  DateTime?
+//   refreshTokenExpiresAt DateTime?
+//   scope                 String?
+//   password              String?
+//   createdAt             DateTime
+//   updatedAt             DateTime
+// }
+//
+// model Verification {
+//   id         String   @id
+//   identifier String
+//   value      String
+//   expiresAt  DateTime
+//   createdAt  DateTime?
+//   updatedAt  DateTime?
 // }
 
 // ========================================
 // フェーズ3以降（企業向け拡張時に有効化）
 // ========================================
-
+// Better-Auth Organization プラグインが管理するテーブル群
+//
 // model Organization {
-//   id         String   @id @default(uuid())
-//   clerkOrgId String   @unique
-//   name       String
-//   users      User[]
-//   createdAt  DateTime @default(now())
+//   id        String   @id
+//   name      String
+//   slug      String?  @unique
+//   logo      String?
+//   createdAt DateTime
+//   metadata  String?
+//   members   Member[]
+// }
+//
+// model Member {
+//   id             String       @id
+//   organizationId String
+//   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+//   userId         String
+//   role           String
+//   createdAt      DateTime
 // }
 ```
 
 **データの将来階層（設計上の見通し）：**
 ```
-[フェーズ3] Organization（企業）
-               └── [フェーズ2] User（個人）
-                                 └── [MVP] Profile（人生計画）
-                                              └── Scenario（プラン）
-                                                    ├── Snapshot（MVP財務・ハッピー）
-                                                    └── [Phase F] FinancialEntry（月次財務）
+[フェーズ3] Organization
+               └── [Phase H] User（Better-Auth管理）
+                                 └── [MVP〜] Profile
+                                              └── Scenario
+                                                    ├── Snapshot
+                                                    └── FinancialEntry（Phase F）
 ```
 
 **主要コマンド：**
 ```bash
 npx prisma migrate dev --name init   # マイグレーション作成・適用
 npx prisma generate                  # Prisma Clientを生成
-npx prisma studio                    # ブラウザでDB確認（開発時に便利）
+npx prisma studio                    # ブラウザでDB確認
 ```
 
 ---
@@ -340,29 +429,19 @@ npx prisma studio                    # ブラウザでDB確認（開発時に便
 ```typescript
 // shared/lib/hama-score.ts
 
-/**
- * 財務健全性指数（0〜100にキャッピング）
- * = 収支バランス比率 と 資産達成率 の平均
- */
 function calcFinanceScore(financial: FinancialData, settings: Settings): number {
   const cashflowRatio = Math.max(0, (financial.income - financial.expense) / financial.income) * 100
   const assetRatio = settings.targetAssets > 0
     ? Math.min(100, (financial.assets / settings.targetAssets) * 100)
-    : 50  // 目標未設定時はニュートラル値
+    : 50
   return (cashflowRatio + assetRatio) / 2
 }
 
-/**
- * ハッピースコア（項目の単純平均）
- */
 function calcHappinessScore(happiness: HappinessData): number {
   const values = Object.values(happiness)
   return values.reduce((sum, v) => sum + v, 0) / values.length
 }
 
-/**
- * HAMAスコア（総合）
- */
 export function calcHamaScore(data: SnapshotData, settings: Settings): number {
   const finScore = calcFinanceScore(data.financial, settings)
   const hapScore = calcHappinessScore(data.happiness)
@@ -372,7 +451,7 @@ export function calcHamaScore(data: SnapshotData, settings: Settings): number {
 
 ---
 
-## 6. Phase F：financial-aggregator.ts 設計
+## 6. Phase F：financial-aggregator.ts 設計（実装済み）
 
 集約は「保存時」ではなく**「表示リクエスト時」に動的に行う**。
 
@@ -380,13 +459,8 @@ export function calcHamaScore(data: SnapshotData, settings: Settings): number {
 // shared/lib/financial-aggregator.ts
 
 type AggregateTarget = 'now' | '5y' | '10y' | '20y'
-type AggregateType   = 'balance' | 'flow'  // 残高系 | フロー系
+type AggregateType   = 'balance' | 'flow'
 
-/**
- * 月次エントリから指定時点の値を集約する
- * - balance（資産・負債）：指定月末の残高
- * - flow（収入・支出）   ：指定年の12ヶ月合計
- */
 export function aggregateToTimepoint(
   entries: FinancialEntry[],
   target: AggregateTarget,
@@ -394,17 +468,11 @@ export function aggregateToTimepoint(
   baseDate: Date
 ): number { ... }
 
-/**
- * 月次エントリを年次に集約する（グラフ用）
- */
 export function aggregateToYearly(
   entries: FinancialEntry[],
   type: AggregateType
 ): Record<string, number> { ... }
 
-/**
- * 月次エントリをそのまま返す（直近36ヶ月グラフ用）
- */
 export function getMonthlyEntries(
   entries: FinancialEntry[],
   months: number = 36
@@ -417,10 +485,8 @@ export function getMonthlyEntries(
 
 ### 7.1 レーダーチャート
 ```typescript
-// indicator にハッピー4項目を設定（max: 100）
-// 財務軸を追加する場合は正規化した値（0〜100）で別 indicator として追加
 // 選択中の1プランのデータのみを seriesData に設定（グラフオーバーレイは行わない）
-// 時点切替（現在/5年後/10年後/20年後）は series.data を差し替えてアニメーション遷移
+// 時点切替はseries.dataを差し替えてアニメーション遷移
 ```
 
 ### 7.2 デュアル軸ラインチャート
@@ -429,38 +495,126 @@ export function getMonthlyEntries(
 //   { type: 'value', name: '金額（万円）', position: 'left' },
 //   { type: 'value', name: 'スコア', min: 0, max: 100, position: 'right' }
 // ]
-//
-// 右軸の系列（yAxisIndex: 1）：
-//   - ハッピー4項目を個別の面グラフで表示（デフォルト）
-//   - HAMAスコアを折れ線グラフで表示
-//
-// 透過度制御：areaStyle.opacity と lineStyle.opacity をUIスライダーと連動
-//   - デフォルト: 各項目 opacity 0.3（面）/ 0.8（線）、HAMAスコア 1.0
-//
-// 財務系 series は yAxisIndex: 0、スコア系 series は yAxisIndex: 1
-//
+// 右軸：ハッピー4項目（面グラフ）+ HAMAスコア（折れ線）
+// 透過度制御：areaStyle.opacity / lineStyle.opacity をUIスライダーと連動
 // Phase F完了後：X軸を月次に拡張し financial-aggregator.ts の集約値を使用
 ```
 
 ---
 
-## 8. Docker Compose 構成（EC2 t4g.small / ARM64対応）
+## 8. Phase G：Caddy設定（HTTPS・リバースプロキシ）
 
-本番環境は **AWS EC2 t4g.small（Graviton2 / ARM64）** を使用する。
-Docker設定はすべて **linux/arm64** ネイティブで動作するように構成する。
+### 8.1 Caddyfile
 
-### 8.1 docker-compose.yml
+```caddyfile
+# Caddyfile
+{
+  # Let's Encryptによる自動HTTPS
+  email admin@example.com
+}
+
+hama.example.com {
+  # Next.jsアプリへのリバースプロキシ
+  reverse_proxy app:3000
+
+  # セキュリティヘッダー
+  header {
+    Strict-Transport-Security "max-age=31536000; includeSubDomains"
+    X-Content-Type-Options "nosniff"
+    X-Frame-Options "DENY"
+    Referrer-Policy "strict-origin-when-cross-origin"
+  }
+
+  # ヘルスチェックエンドポイントはそのまま通す
+  handle /api/health {
+    reverse_proxy app:3000
+  }
+}
+
+# ローカル開発用（HTTPSなし）
+:80 {
+  reverse_proxy app:3000
+}
+```
+
+### 8.2 docker-compose.prod.yml（本番用・Caddy含む）
 
 ```yaml
-# docker-compose.yml
+# docker-compose.prod.yml
+version: '3.9'
+services:
+  caddy:
+    image: caddy:2-alpine
+    platform: linux/arm64
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data       # TLS証明書の永続化
+      - caddy_config:/config
+    depends_on:
+      app:
+        condition: service_healthy
+    restart: unless-stopped
+
+  app:
+    build:
+      context: .
+      platforms:
+        - linux/arm64
+    platform: linux/arm64
+    expose:
+      - "3000"               # Caddyからのみアクセス（外部公開しない）
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - NEXT_PUBLIC_APP_NAME=HAMA
+      - NEXT_PUBLIC_DEFAULT_CURRENCY=JPY
+      - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
+      - BETTER_AUTH_URL=${BETTER_AUTH_URL}
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  db:
+    image: postgres:16-alpine
+    platform: linux/arm64
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - hama_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  hama_pgdata:
+  caddy_data:
+  caddy_config:
+```
+
+### 8.3 docker-compose.yml（ローカル開発用・変更なし）
+
+```yaml
+# docker-compose.yml（開発環境：Caddyなし・HTTPのまま）
 version: '3.9'
 services:
   app:
     build:
       context: .
-      dockerfile: Dockerfile
       platforms:
-        - linux/arm64      # t4g.small（Graviton2/ARM64）向け
+        - linux/arm64
     platform: linux/arm64
     ports:
       - "3000:3000"
@@ -468,9 +622,6 @@ services:
       - DATABASE_URL=postgresql://hama:hama@db:5432/hama
       - NEXT_PUBLIC_APP_NAME=HAMA
       - NEXT_PUBLIC_DEFAULT_CURRENCY=JPY
-      # ── フェーズ2（個人向け認証）追加時に有効化 ──
-      # - NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
-      # - CLERK_SECRET_KEY=${CLERK_SECRET_KEY}
     depends_on:
       db:
         condition: service_healthy
@@ -480,7 +631,7 @@ services:
       - /app/.next
 
   db:
-    image: postgres:16-alpine          # Alpine は ARM64 マルチアーキ対応済み
+    image: postgres:16-alpine
     platform: linux/arm64
     environment:
       POSTGRES_USER: hama
@@ -500,42 +651,336 @@ volumes:
   hama_pgdata:
 ```
 
-### 8.2 Dockerfile
+---
+
+## 9. Phase G：GitHub Actions CI/CD
+
+### 9.1 CI ワークフロー（ci.yml）
+
+```yaml
+# .github/workflows/ci.yml
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - name: TypeScript 型チェック
+        run: npm run typecheck
+
+      - name: ESLint
+        run: npm run lint
+
+      - name: Vitest 単体テスト
+        run: npm run test
+
+      - name: Prisma スキーマ検証
+        run: npx prisma validate
+```
+
+### 9.2 CD ワークフロー（cd.yml）
+
+```yaml
+# .github/workflows/cd.yml
+name: CD
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up QEMU（ARM64エミュレーション）
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Docker イメージビルド（linux/arm64）
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: linux/arm64
+          push: false
+          tags: hama:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          outputs: type=docker,dest=/tmp/hama.tar
+
+      - name: EC2へイメージ転送・デプロイ
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            docker load < /tmp/hama.tar
+            cd /opt/hama
+            docker compose -f docker-compose.prod.yml pull
+            docker compose -f docker-compose.prod.yml up -d --no-deps app
+            docker compose -f docker-compose.prod.yml exec app npx prisma migrate deploy
+```
+
+**GitHub Secrets の設定（EC2デプロイ用）：**
+
+| Secret名 | 内容 |
+|---|---|
+| `EC2_HOST` | EC2のパブリックIPまたはドメイン |
+| `EC2_USER` | SSHユーザー名（`ec2-user` 等） |
+| `EC2_SSH_KEY` | EC2接続用SSHプライベートキー |
+| `BETTER_AUTH_SECRET` | Better-Authのシークレットキー |
+| `BETTER_AUTH_URL` | 本番URL（`https://hama.example.com`） |
+
+---
+
+## 10. Phase G：Brook-lint（skill.md群によるAIコードレビュー）
+
+### 10.1 概要
+
+Brook-lintはPRに対してskill.mdファイル群を知識源として活用し、プロジェクト固有のコーディング規約・アーキテクチャ方針に基づいたAIコードレビューを自動実行するツール。
+
+### 10.2 設定ファイル（.brook-lint/config.yml）
+
+```yaml
+# .brook-lint/config.yml
+version: 1
+
+# レビューの知識源となるskill.mdファイルの参照パス
+skills:
+  - .brook-lint/skills/nextjs.md
+  - .brook-lint/skills/prisma.md
+  - .brook-lint/skills/typescript.md
+  - .brook-lint/skills/react-patterns.md
+  - .brook-lint/skills/hama-conventions.md   # プロジェクト固有の規約
+
+# レビュー対象ファイルのパターン
+include:
+  - "src/**/*.ts"
+  - "src/**/*.tsx"
+  - "prisma/schema.prisma"
+
+exclude:
+  - "src/**/*.test.ts"
+  - "src/**/*.spec.ts"
+  - "node_modules/**"
+
+# レビュー観点
+review_focus:
+  - アーキテクチャ方針（FSD準拠・レイヤー分離）
+  - 型安全性（anyの禁止・Zod整合性）
+  - Prismaスキーマ変更の影響
+  - HAMAスコア計算ロジックの正確性
+  - Phase設計との整合性
+```
+
+### 10.3 GitHub Actionsワークフロー（review.yml）
+
+```yaml
+# .github/workflows/review.yml
+name: Brook-lint Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Brook-lint AIコードレビュー
+        uses: brook-lint/action@v1
+        with:
+          config: .brook-lint/config.yml
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          # PRのdiffのみを対象にレビュー
+          diff-only: true
+```
+
+### 10.4 .brook-lint/skills/hama-conventions.md の記載内容
+
+```markdown
+# HAMA プロジェクト固有のコーディング規約
+
+## アーキテクチャ
+- Feature Sliced Design（FSD）準拠。features/ 配下はドメイン別に分割すること
+- shared/ には特定ドメインに依存しないユーティリティのみ配置すること
+- Zustand ストアをまたいだ直接参照は禁止（必ずAPIルート経由でDB保存）
+
+## 財務計算
+- 財務値の計算はすべて shared/lib/ に集約すること
+- 月次集約は financial-aggregator.ts を使用し、コンポーネント内で直接計算しないこと
+- HAMAスコアの加重値変更は Settings モデル経由のみ許可
+
+## DBアクセス
+- Prismaクライアントの直接呼び出しはAPIルート（app/api/）のみ許可
+- トランザクションが必要な複数テーブル操作は prisma.$transaction() を使用すること
+
+## 型定義
+- any の使用は禁止。unknown を使用して型を絞り込むこと
+- Prismaの自動生成型を直接 props に使用しないこと（entities/ で型エイリアスを定義）
+```
+
+---
+
+## 11. Phase H：Better-Auth 認証設計
+
+### 11.1 Better-Auth の概要と選定理由
+
+| 項目 | 内容 |
+|---|---|
+| 種別 | 自己ホスト型オープンソース認証ライブラリ |
+| SaaS依存 | なし（Clerkと異なりデータが自社DBに保存される） |
+| Prisma統合 | アダプター提供・テーブル自動生成 |
+| 対応認証方式 | メール+パスワード・OAuth（Google/GitHub等）・マジックリンク |
+| 将来の拡張 | Organizationプラグインで企業向けマルチテナントに対応可能 |
+
+### 11.2 サーバー設定（features/auth/auth.ts）
+
+```typescript
+// src/features/auth/auth.ts
+import { betterAuth } from 'better-auth'
+import { prismaAdapter } from 'better-auth/adapters/prisma'
+import { prisma } from '@/shared/lib/prisma'
+
+export const auth = betterAuth({
+  database: prismaAdapter(prisma, {
+    provider: 'postgresql'
+  }),
+  emailAndPassword: {
+    enabled: true,
+    requireEmailVerification: false  // MVP段階はメール確認不要
+  },
+  socialProviders: {
+    google: {
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!
+    }
+  },
+  session: {
+    expiresIn: 60 * 60 * 24 * 7,     // 7日
+    updateAge: 60 * 60 * 24          // 1日ごとにセッション更新
+  }
+})
+```
+
+### 11.3 APIルート（app/api/auth/[...all]/route.ts）
+
+```typescript
+// src/app/api/auth/[...all]/route.ts
+import { auth } from '@/features/auth/auth'
+import { toNextJsHandler } from 'better-auth/next-js'
+
+export const { GET, POST } = toNextJsHandler(auth)
+```
+
+### 11.4 クライアント設定（features/auth/auth-client.ts）
+
+```typescript
+// src/features/auth/auth-client.ts
+import { createAuthClient } from 'better-auth/react'
+
+export const authClient = createAuthClient({
+  baseURL: process.env.NEXT_PUBLIC_APP_URL
+})
+
+export const { signIn, signOut, signUp, useSession } = authClient
+```
+
+### 11.5 middleware.ts によるルート保護
+
+```typescript
+// middleware.ts
+import { NextRequest, NextResponse } from 'next/server'
+import { betterFetch } from '@better-fetch/fetch'
+
+const PUBLIC_ROUTES = ['/sign-in', '/sign-up', '/api/auth']
+
+export async function middleware(request: NextRequest) {
+  const pathname = request.nextUrl.pathname
+
+  // パブリックルートはそのまま通す
+  if (PUBLIC_ROUTES.some(route => pathname.startsWith(route))) {
+    return NextResponse.next()
+  }
+
+  // セッション検証
+  const { data: session } = await betterFetch('/api/auth/get-session', {
+    baseURL: request.nextUrl.origin,
+    headers: { cookie: request.headers.get('cookie') ?? '' }
+  })
+
+  if (!session) {
+    return NextResponse.redirect(new URL('/sign-in', request.url))
+  }
+
+  return NextResponse.next()
+}
+
+export const config = {
+  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)']
+}
+```
+
+---
+
+## 12. Docker Compose 構成（開発・本番）
+
+### 12.1 Dockerfile
 
 ```dockerfile
 # Dockerfile
-# node:20-alpine は linux/arm64（Graviton2）対応済み
 FROM node:20-alpine AS base
-
 WORKDIR /app
 
-# 依存関係インストール（キャッシュ最適化）
 FROM base AS deps
 COPY package*.json ./
 RUN npm ci
 
-# ビルドステージ
 FROM base AS builder
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npm run build
 
-# 本番ランタイム
 FROM base AS runner
 ENV NODE_ENV=production
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
-
 EXPOSE 3000
 CMD ["node", "server.js"]
 ```
 
-> **ローカルでのARM64ビルド注意**：
-> macOS（Apple Silicon）では `docker buildx build --platform linux/arm64` で正しくビルドできる。
-> Intel Mac / Windows では `--platform linux/arm64` 指定時にエミュレーション（遅い）が走るが、CI/CD（GitHub Actions + arm64 runner）で対処することを推奨する。
+> `node:20-alpine` は linux/arm64（Graviton2）対応済み。
 
-### 8.3 EC2 t4g.small 運用メモ
+### 12.2 EC2 t4g.small 運用メモ
 
 | 項目 | 内容 |
 |---|---|
@@ -543,12 +988,12 @@ CMD ["node", "server.js"]
 | アーキテクチャ | ARM64（linux/arm64） |
 | OS | Amazon Linux 2023 または Ubuntu 22.04 ARM |
 | Docker | Docker Engine 24.x + Compose V2 |
-| PostgreSQL | RDS for PostgreSQL（本番）/ コンテナ内（開発） |
-| ポート | 3000（アプリ）/ 5432（PostgreSQL） |
+| PostgreSQL | RDS for PostgreSQL（本番推奨）/ コンテナ内（開発） |
+| ポート公開 | 80・443（Caddy）のみ。3000は外部非公開 |
 
 ---
 
-## 9. 環境変数
+## 13. 環境変数
 
 ```bash
 # .env.example
@@ -559,58 +1004,50 @@ DATABASE_URL=postgresql://hama:hama@localhost:5432/hama
 # アプリ設定
 NEXT_PUBLIC_APP_NAME=HAMA
 NEXT_PUBLIC_DEFAULT_CURRENCY=JPY
+NEXT_PUBLIC_APP_URL=http://localhost:3000
 
-# ── フェーズ2（個人向け認証）追加時に有効化 ──
-# NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_xxxx
-# CLERK_SECRET_KEY=sk_test_xxxx
-# NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
-# NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up
+# ── Phase H（Better-Auth）追加時に有効化 ──
+# BETTER_AUTH_SECRET=your-secret-key-min-32-chars
+# BETTER_AUTH_URL=https://hama.example.com
+# GOOGLE_CLIENT_ID=xxxx.apps.googleusercontent.com
+# GOOGLE_CLIENT_SECRET=xxxx
+
+# ── 本番環境（Caddy・EC2）──
+# POSTGRES_USER=hama
+# POSTGRES_PASSWORD=your-secure-password
+# POSTGRES_DB=hama
 ```
 
 ---
 
-## 10. 拡張性設計指針
+## 14. 拡張性設計指針
 
-### 10.1 カテゴリ・項目の追加
-`shared/config/categories.ts` に定義を追加するだけで入力フォーム・チャート・スコア計算に自動反映される設定駆動設計。
-
-```typescript
-export const CATEGORIES = {
-  happiness: [
-    { id: 'hap_time',    label: '時間バランス', type: 'slider', min: 0, max: 100 },
-    { id: 'hap_health',  label: '健康',         type: 'slider', min: 0, max: 100 },
-    // ← ここに追加するだけでUI・チャートに反映
-  ],
-  financial: [
-    { id: 'fin_assets',  label: '総資産', type: 'currency', unit: 'JPY' },
-  ]
-}
-```
-
-### 10.2 認証ロードマップ
+### 14.1 認証ロードマップ
 
 | フェーズ | 認証状態 | 対応内容 |
 |---|---|---|
-| **MVP** | **認証なし** | 単一ユーザー想定。Profile.userId は null |
-| **フェーズ2** | 個人向け認証 | Clerk導入。middleware.ts でルート保護。userId を Profile に紐付け |
-| **フェーズ3** | 企業向け拡張 | Clerk Organization。Organization モデル追加。SSO対応 ※計画外 |
+| **S01〜F06（完了済み）** | **認証なし** | 単一ユーザー想定。Profile.userId は null |
+| **Phase G** | **認証なし**（インフラ整備のみ） | Caddy・CI/CD・Brook-lint導入 |
+| **Phase H** | **Better-Auth 個人認証** | メール+パスワード・OAuth。userId を Profile に紐付け |
+| **フェーズ3** | **企業向け拡張** | Better-Auth Organizationプラグイン。SSO対応 ※計画外 |
 
-フェーズ2移行時の変更コストは最小化済み：
-- `Profile.userId` を `nullable → required` に変更
-- `middleware.ts` を追加
+Phase H移行時の変更コストは最小化済み：
+- `Profile.userId` を `nullable → required` に変更（マイグレーション1本）
+- `middleware.ts` を追加（新規ファイル）
 - `features/auth/` を実装（ディレクトリはMVP時点で作成済み）
+- Better-Auth テーブル群を Prisma スキーマに追加（コメントアウト済み）
 
-### 10.3 フロントエンドサーバーは不要
-Next.js 15 App Router が画面（React）と API（API Routes）を1プロセスで統合。
-別途 Express・FastAPI などのサーバーを立てる必要はなく、EC2の1コンテナで完結する。
+### 14.2 フロントエンドサーバーは不要
+Next.js 15 App Router が画面と APIを1プロセスで統合。
+Caddy → Next.js の2コンテナ構成で本番運用が完結する。
 
-### 10.4 将来のAI連携（Claude API）
+### 14.3 将来のAI連携（Claude API）
 - `app/api/advice/route.ts` を追加し、スナップショットデータをコンテキストとして Claude API に送信
 - アドバイス結果をダッシュボードのサイドパネルに表示
 
 ---
 
-## 11. 開発スライス計画
+## 15. 開発スライス計画
 
 ### 設計思想
 - **1スライス = 動く最小単位**。完了時点でアプリが実際に動作すること
@@ -621,17 +1058,14 @@ Next.js 15 App Router が画面（React）と API（API Routes）を1プロセ�
 ### git 運用ルール
 
 ```bash
-# スライス開始時
-git checkout -b slice/S01-project-skeleton
-
-# スライス完了時
+git checkout -b slice/G01-caddy-https
 git add .
-git commit -m "S01: プロジェクト骨格・Docker環境構築"
+git commit -m "G01: Caddy導入・HTTPS設定"
 git checkout main
-git merge slice/S01-project-skeleton
+git merge slice/G01-caddy-https
 ```
 
-**コミットメッセージ規則**：`S##: 日本語で何をしたか`
+**コミットメッセージ規則**：`[フェーズ記号][番号]: 日本語で何をしたか`
 
 ---
 
@@ -706,32 +1140,60 @@ git merge slice/S01-project-skeleton
 
 ---
 
-### Copilotへの指示テンプレート
+#### 🌐 Phase G：インフラ整備（F06完了後に着手）
 
-各スライス開始時に以下の形式でCopilot Chatに貼り付ける：
+**目標**：本番稼働できるインフラを整える。認証は追加しない。
+
+| スライス | 内容 | 完了条件 | gitタグ |
+|---|---|---|---|
+| **G01** | `Caddyfile` 作成・`docker-compose.prod.yml` にCaddyサービス追加・ローカルHTTPS動作確認 | `https://localhost` でHAMAが表示される | `G01` |
+| **G02** | GitHub Actions CI ワークフロー（`ci.yml`）作成：typecheck・lint・Vitest・Prisma validate | PRを作成するとCIが自動実行され全ステップがpassする | `G02` |
+| **G03** | GitHub Actions CD ワークフロー（`cd.yml`）作成：ARM64 Docker buildx・EC2 SSH デプロイ | mainへのpushでEC2に自動デプロイされHTTPSで動作する | `G03` |
+| **G04** | Brook-lint セットアップ：`.brook-lint/config.yml`・skill.mdファイル群の作成・`review.yml` ワークフロー追加 | PRにBrook-lintのAIレビューコメントが自動投稿される | `G04` |
+
+---
+
+#### 🔐 Phase H：認証（Phase G完了後に着手）
+
+**目標**：Better-Authによる個人向け認証を追加し、ユーザーごとにデータを分離する。
+
+| スライス | 内容 | 完了条件 | gitタグ |
+|---|---|---|---|
+| **H01** | Better-Auth インストール・`features/auth/auth.ts` 作成・Prismaスキーマに User/Session/Account/Verification テーブル追加・マイグレーション実行 | `npx prisma migrate dev` が通り、4テーブルがDBに作成される | `H01` |
+| **H02** | Better-Auth APIルート（`/api/auth/[...all]/route.ts`）追加・メール+パスワード認証の動作確認 | `POST /api/auth/sign-up/email` でユーザー登録できる | `H02` |
+| **H03** | サインイン画面（`/sign-in`）・サインアップ画面（`/sign-up`）のUI実装 | ブラウザからユーザー登録・ログイン・ログアウトができる | `H03` |
+| **H04** | `middleware.ts` 追加によるルート保護・未認証時の `/sign-in` リダイレクト | 未ログイン状態でダッシュボードにアクセスするとサインイン画面にリダイレクトされる | `H04` |
+| **H05** | `Profile.userId` を `required` に変更・マイグレーション・サインアップ時にProfileを自動作成するロジック追加 | 新規ユーザー登録後、自動でデフォルトProfileが作成されダッシュボードが表示される | `H05` |
+| **H06** | 既存データ移行スクリプト作成（userId=nullのProfileに仮ユーザーを割り当て）・動作確認 | Phase G以前に作成したデータが認証後も参照できる | `H06` |
+| **H07** | OAuth追加（Google）・ソーシャルログインボタンのUI実装 | Googleアカウントでログイン・ユーザー情報取得ができる | `H07` |
+| **H08** | Caddy設定更新・Better-Auth URLをHTTPS本番URLに変更・EC2本番動作確認 | 本番環境でHTTPS認証が正常動作する | `H08` |
+
+---
+
+### Copilotへの指示テンプレート
 
 ```
 @workspace
 PRODUCT.md と ARCHITECTURE.md を参照してください。
 
-## 今回のタスク：S05 - ハッピースコア入力UI
+## 今回のタスク：G01 - Caddy導入・HTTPS設定
 
 ### 実装内容
-- features/happiness/components/HappinessSlider.tsx を作成
-- ハッピー4項目（時間バランス・健康・人間関係・自己実現）のスライダーUI
-- 各スライダーは0〜100、Zustandストアにリアルタイム反映
-- Zodバリデーションを使用
-- shadcn/ui の Slider コンポーネントを使うこと
+- Caddyfile を新規作成（ローカル開発用：:80 → app:3000 プロキシ）
+- docker-compose.prod.yml を新規作成（Caddy + app + db の3サービス構成）
+- docker-compose.yml はローカル開発用のまま変更しない
+- ARCHITECTURE.md の 8.1〜8.2 の設定を参考にすること
 
 ### 完了条件
-スライダーを動かすと値がZustandストアに反映されること
+`docker compose -f docker-compose.prod.yml up` でCaddy経由でHAMAが表示されること
 
 ### 変更してよいファイル
-- src/features/happiness/ 配下の新規ファイル
-- src/store/profileStore.ts（ハッピー値の追加のみ）
+- Caddyfile（新規）
+- docker-compose.prod.yml（新規）
 
 ### 変更してはいけないファイル
-- src/app/ 配下のルーティング
+- docker-compose.yml（開発用・変更禁止）
+- src/ 配下のすべてのファイル
 - prisma/schema.prisma
 ```
 
